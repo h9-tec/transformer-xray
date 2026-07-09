@@ -116,6 +116,32 @@ body {
   list-style: disc;
 }
 
+/* ─── CUDA code tokens ─── */
+
+.cuda-code {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+}
+.cuda-code .tok-comment {
+  color: var(--color-faint);
+  font-style: italic;
+}
+.cuda-code .tok-cuda {
+  color: var(--color-fwd);
+}
+.cuda-code .tok-builtin {
+  color: var(--color-accent);
+}
+.cuda-code .tok-type {
+  color: var(--color-update);
+}
+.cuda-code .tok-kw {
+  color: var(--color-bwd);
+}
+.cuda-code .tok-num {
+  color: var(--color-ink);
+}
+
 /* ─── KaTeX on dark ─── */
 
 .katex {

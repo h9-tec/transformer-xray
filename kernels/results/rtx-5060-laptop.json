@@ -1,0 +1,16 @@
+{
+"gpu": "NVIDIA GeForce RTX 5060 Laptop GPU",
+"results": [
+  {"kernel": "embedding_gather", "ms": 0.00211, "max_diff": 0},
+  {"kernel": "layernorm_naive", "ms": 0.04793, "max_diff": 3.57628e-07},
+  {"kernel": "layernorm_warp", "ms": 0.00412, "max_diff": 5.96046e-07},
+  {"kernel": "matmul_naive", "shape": "128x192x576", "ms": 0.02977, "max_diff": 4.76837e-07},
+  {"kernel": "matmul_tiled", "shape": "128x192x576", "ms": 0.02459, "max_diff": 4.76837e-07},
+  {"kernel": "matmul_naive", "shape": "128x192x768", "ms": 0.03907, "max_diff": 4.17233e-07},
+  {"kernel": "matmul_tiled", "shape": "128x192x768", "ms": 0.03075, "max_diff": 4.17233e-07},
+  {"kernel": "attention_row", "T": 128, "ms": 0.01027, "max_diff": 8.9407e-08},
+  {"kernel": "gelu_forward", "ms": 0.00216, "max_diff": 2.38419e-07},
+  {"kernel": "gelu_forward_f4", "ms": 0.00209, "max_diff": 2.38419e-07},
+  {"kernel": "end", "ms": 0, "max_diff": 0}
+]
+}
