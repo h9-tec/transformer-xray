@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "pnpm build:worker && next dev",
+    "build": "pnpm build:worker && next build",
     "start": "next start",
     "test": "vitest run",
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "build:worker": "node scripts/build-worker.mjs"
   },
   "dependencies": {
     "@mdx-js/loader": "^3.1.1",
@@ -29,6 +30,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.28.1",
     "oxlint": "^1.73.0",
     "tailwindcss": "^4",
     "typescript": "^5",

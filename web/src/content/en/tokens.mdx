@@ -1,0 +1,22 @@
+# Tokens
+
+Text becomes numbers — and **nothing else survives**. From here on, the model
+never sees letters, only integer ids.
+
+<Junior>
+  This model reads one character at a time. Its whole alphabet is the 65
+  characters that appear in Shakespeare — each one gets a number, and that
+  number is all the model ever receives. If a character isn't in the table,
+  the model literally has no number for it.
+</Junior>
+
+<Senior>
+  Real GPTs use **BPE subword** vocabularies ($V \approx 50{,}257$ for GPT-2)
+  built by iteratively merging frequent byte pairs. We use a char-level
+  vocabulary ($V = 65$) deliberately: the embedding matrix and the full logits
+  vector stay small enough to visualize *without sampling or truncation*. The
+  pipeline is otherwise identical.
+
+  Tokenization here is a pure lookup: $x_t = \mathrm{stoi}(c_t)$, invertible
+  by construction — `decode(encode(s)) === s` is one of the engine's tests.
+</Senior>

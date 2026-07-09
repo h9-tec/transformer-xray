@@ -73,6 +73,49 @@ body {
   display: none;
 }
 
+/* ─── Math-panel prose (MDX content) ─── */
+
+.prose-panel h1,
+.prose-panel h2,
+.prose-panel h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  margin-block: 0.75em 0.4em;
+}
+.prose-panel h1 {
+  font-size: 1.25rem;
+}
+.prose-panel h2 {
+  font-size: 1.05rem;
+}
+.prose-panel p {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.7;
+  margin-block: 0.6em;
+}
+.prose-panel strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.prose-panel code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: var(--color-raised);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.prose-panel .katex-display {
+  margin-block: 0.9em;
+}
+.prose-panel ul,
+.prose-panel ol {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  padding-inline-start: 1.2em;
+  list-style: disc;
+}
+
 /* ─── KaTeX on dark ─── */
 
 .katex {

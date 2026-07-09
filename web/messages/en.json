@@ -27,5 +27,12 @@
     "mlp": "MLP",
     "residual": "Residual stream",
     "logits": "Logits & sampling"
+  },
+  "inspect": {
+    "inputLabel": "Text to inspect",
+    "traceButton": "trace",
+    "tracing": "tracing…",
+    "liveNote": "forward + backward computed live in your browser",
+    "waiting": "waiting for the model…"
   }
 }

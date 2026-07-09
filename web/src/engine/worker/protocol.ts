@@ -13,7 +13,14 @@ export interface GenerateParams {
 }
 
 export type WorkerRequest =
-  | { id: number; type: 'init'; base: string }
+  | {
+      id: number;
+      type: 'init';
+      /** weights transferred from the main thread — the worker never fetches */
+      cfgJson: ModelConfigJson;
+      chars: string;
+      weightsBuffer: ArrayBuffer;
+    }
   | { id: number; type: 'generate'; params: GenerateParams }
   | { id: number; type: 'trace'; text: string; targets?: string };
 

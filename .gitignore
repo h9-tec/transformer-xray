@@ -17,3 +17,5 @@ kernels/build/
 # Misc
 .DS_Store
 *.log
+web/public/engine.worker.*.js
+web/src/engine/worker/worker-url.ts

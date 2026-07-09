@@ -12,26 +12,17 @@ let weights: Weights | null = null;
 let cfg: Config | null = null;
 let tokenizer: CharTokenizer | null = null;
 
+console.log('[engine.worker] booted');
+
 function post(msg: WorkerResponse, transfer: Transferable[] = []): void {
   (self as unknown as Worker).postMessage(msg, transfer);
 }
 
-async function fetchOk(url: string): Promise<Response> {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`failed to fetch ${url}: ${r.status}`);
-  return r;
-}
-
-async function handleInit(id: number, base: string): Promise<void> {
-  const [cfgJson, tokJson, buf] = await Promise.all([
-    fetchOk(`${base}/config.json`).then((r) => r.json() as Promise<ModelConfigJson>),
-    fetchOk(`${base}/tokenizer.json`).then((r) => r.json() as Promise<{ chars: string }>),
-    fetchOk(`${base}/weights.bin`).then((r) => r.arrayBuffer()),
-  ]);
+function handleInit(id: number, cfgJson: ModelConfigJson, chars: string, buf: ArrayBuffer): void {
   cfg = configFromJson(cfgJson);
   weights = parseBlob(buf, cfgJson.tensors);
-  tokenizer = new CharTokenizer(tokJson.chars);
-  post({ id, type: 'ready', cfgJson, chars: tokJson.chars });
+  tokenizer = new CharTokenizer(chars);
+  post({ id, type: 'ready', cfgJson, chars });
 }
 
 function handleGenerate(id: number, p: WorkerRequest & { type: 'generate' }): void {
@@ -89,10 +80,10 @@ function handleTrace(id: number, text: string, targets?: string): void {
   );
 }
 
-self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
+self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const msg = e.data;
   try {
-    if (msg.type === 'init') await handleInit(msg.id, msg.base);
+    if (msg.type === 'init') handleInit(msg.id, msg.cfgJson, msg.chars, msg.weightsBuffer);
     else if (msg.type === 'generate') handleGenerate(msg.id, msg);
     else if (msg.type === 'trace') handleTrace(msg.id, msg.text, msg.targets);
   } catch (err) {

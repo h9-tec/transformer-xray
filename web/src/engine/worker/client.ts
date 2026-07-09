@@ -3,6 +3,7 @@
 import type { TraceNode } from '../tape';
 import type { ModelConfigJson } from '../weights';
 import type { GenerateParams, WireNode, WorkerRequest, WorkerResponse } from './protocol';
+import { WORKER_URL } from './worker-url';
 
 export interface TokenEvent {
   index: number;
@@ -53,8 +54,21 @@ export class EngineClient {
   private pending = new Map<number, Pending>();
 
   constructor() {
-    this.worker = new Worker(new URL('./engine.worker.ts', import.meta.url));
+    // The worker is bundled by esbuild into public/ (see build:worker) —
+    // deliberately outside the app bundler: bundler-worker interop broke
+    // silently under static export, and a plain script URL cannot. The
+    // filename is content-hashed so caches can never serve a stale engine.
+    this.worker = new Worker(WORKER_URL);
     this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => this.dispatch(e.data);
+    // A worker that fails to boot emits 'error', not a message — without this,
+    // every pending promise would hang forever.
+    this.worker.onerror = (e) => this.failAll(`engine worker error: ${e.message ?? 'unknown'}`);
+    this.worker.onmessageerror = () => this.failAll('engine worker: message deserialization failed');
+  }
+
+  private failAll(message: string): void {
+    for (const p of this.pending.values()) p.reject(new Error(message));
+    this.pending.clear();
   }
 
   private dispatch(msg: WorkerResponse): void {
@@ -77,16 +91,30 @@ export class EngineClient {
     }
   }
 
-  private send<T>(req: OutgoingRequest, onToken?: (t: TokenEvent) => void): Promise<T> {
+  private send<T>(
+    req: OutgoingRequest,
+    onToken?: (t: TokenEvent) => void,
+    transfer: Transferable[] = [],
+  ): Promise<T> {
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onToken });
-      this.worker.postMessage({ ...req, id });
+      this.worker.postMessage({ ...req, id }, transfer);
     });
   }
 
-  async init(base = '/model'): Promise<{ cfgJson: ModelConfigJson; chars: string }> {
-    const r = await this.send<WorkerResponse & { type: 'ready' }>({ type: 'init', base });
+  /** Weights are loaded once on the main thread and copied into the worker
+   * (transferred, so no serialization cost). The worker never fetches. */
+  async init(
+    cfgJson: ModelConfigJson,
+    chars: string,
+    weightsBuffer: ArrayBuffer,
+  ): Promise<{ cfgJson: ModelConfigJson; chars: string }> {
+    const r = await this.send<WorkerResponse & { type: 'ready' }>(
+      { type: 'init', cfgJson, chars, weightsBuffer },
+      undefined,
+      [weightsBuffer],
+    );
     return { cfgJson: r.cfgJson, chars: r.chars };
   }
 

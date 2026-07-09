@@ -1,0 +1,29 @@
+# Embeddings
+
+Each token id selects a **row** of the embedding matrix; each position adds a
+learned position vector:
+
+$$
+h^{(0)}_t = W_E[x_t] + W_P[t]
+$$
+
+<Junior>
+  A number like `43` can't be "similar" to `56` — but vectors can. The
+  embedding table turns every character into a list of 192 numbers, and
+  training slowly drags characters that behave alike toward each other. Click
+  a row on the left: vowels find vowels, punctuation finds punctuation.
+  Nobody programmed that — it's all learned from predicting Shakespeare.
+</Junior>
+
+<Senior>
+  $W_E \in \mathbb{R}^{65 \times 192}$, $W_P \in \mathbb{R}^{256 \times 192}$,
+  both initialized $\mathcal{N}(0, 0.02^2)$ and fully learned. The lookup is a
+  **gather** — zero FLOPs, pure memory traffic (arithmetic intensity ≈ 0, the
+  canonical memory-bound op; see the GPU view).
+
+  Two things worth noticing: positions are *added*, not concatenated — the
+  residual stream is a single shared vector space. And $W_E$ is **weight-tied**:
+  the same matrix scores the output logits at the far end of the network, so
+  its gradient accumulates from both ends (the backward view makes this
+  visible).
+</Senior>

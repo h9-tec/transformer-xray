@@ -14,12 +14,19 @@ export interface LoadedModel {
   cfgJson: ModelConfigJson;
   weights: Weights;
   tokenizer: CharTokenizer;
+  /** the raw fetched bytes — callers may copy it into a worker */
+  rawBuffer: ArrayBuffer;
 }
 
 async function fetchOk(url: string): Promise<Response> {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`failed to fetch ${url}: ${r.status}`);
-  return r;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`fetch failed for ${url}: ${msg}`); // errors must name their URL
+  }
 }
 
 export async function loadModel(base = '/model'): Promise<LoadedModel> {
@@ -33,5 +40,6 @@ export async function loadModel(base = '/model'): Promise<LoadedModel> {
     cfgJson,
     weights: parseBlob(weightsBuf, cfgJson.tensors),
     tokenizer: new CharTokenizer(tokJson.chars),
+    rawBuffer: weightsBuf,
   };
 }

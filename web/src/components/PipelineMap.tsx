@@ -3,16 +3,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-
-const STAGES = [
-  { slug: 'tokens', key: 'tokens' },
-  { slug: 'embeddings', key: 'embeddings' },
-  { slug: 'layernorm', key: 'layernorm' },
-  { slug: 'attention', key: 'attention' },
-  { slug: 'mlp', key: 'mlp' },
-  { slug: 'residual', key: 'residual' },
-  { slug: 'logits', key: 'logits' },
-] as const;
+import { FORWARD_STAGES as STAGES } from '@/lib/stages';
 
 export function PipelineMap() {
   const t = useTranslations('pipeline');

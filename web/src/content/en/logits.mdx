@@ -1,0 +1,30 @@
+# Logits & sampling
+
+The final hidden state is scored against **every** vocabulary row — by the
+same matrix that embedded the input (weight tying):
+
+$$
+\ell_t = h^{(L)}_t \, W_E^{\top} \in \mathbb{R}^{65}
+$$
+
+$$
+p_t = \mathrm{softmax}(\ell_t / \tau)
+$$
+
+<Junior>
+  Each row on the left is the model answering "what comes next?" at that point
+  in the text. Bigger number = more confident. Softmax turns those scores into
+  probabilities, temperature $\tau$ makes the choice bolder or safer, and
+  top-k throws away the long tail before drawing.
+</Junior>
+
+<Senior>
+  Softmax is shift-invariant, so the engine subtracts the row max before
+  exponentiating — $e^{\ell - \max \ell}$ — or fp32 would overflow at
+  $\ell \approx 88.7$. Temperature divides logits *before* softmax:
+  $\tau \to 0$ approaches argmax, $\tau > 1$ flattens toward uniform.
+
+  Training never samples: the loss reads $-\ln p_t[y_t]$ directly (the loss
+  view), which is why the per-position loss equals the height of the true
+  character's bar, negated and logged.
+</Senior>
