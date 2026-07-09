@@ -80,7 +80,8 @@ def main() -> None:
             losses = estimate_loss(model, splits, m, t, args.device)
             elapsed = time.time() - t0
             print(
-                f"iter {it:5d} | train {losses['train']:.4f} | val {losses['val']:.4f} | {elapsed:6.1f}s"
+                f"iter {it:5d} | train {losses['train']:.4f} "
+                f"| val {losses['val']:.4f} | {elapsed:6.1f}s"
             )
             if losses["val"] < best_val:
                 best_val = losses["val"]

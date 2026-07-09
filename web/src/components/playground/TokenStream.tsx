@@ -32,7 +32,8 @@ export function TokenStream({ chars }: { chars: string }) {
               : 'rounded-sm text-fwd hover:bg-raised'
           }
         >
-          {chars[s.token]}
+          {/* newline tokens get a visible glyph, then the actual break */}
+          {chars[s.token] === '\n' ? '↵\n' : chars[s.token]}
         </button>
       ))}
       {generating && <span className="animate-pulse text-fwd">▍</span>}

@@ -1,5 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Shell } from '@/components/Shell';
+import { StoreBridge } from '@/components/StoreBridge';
 
 export default async function AppLayout({
   children,
@@ -10,5 +11,10 @@ export default async function AppLayout({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <Shell>{children}</Shell>;
+  return (
+    <Shell>
+      <StoreBridge />
+      {children}
+    </Shell>
+  );
 }

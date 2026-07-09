@@ -51,6 +51,7 @@ export function TensorHeatmap({
   const [hover, setHover] = useState<{ r: number; c: number; v: number; x: number; y: number } | null>(
     null,
   );
+  const [cursor, setCursor] = useState<{ r: number; c: number } | null>(null);
 
   const norm = useMemo(() => scale ?? absMax(data), [data, scale]);
 
@@ -99,7 +100,33 @@ export function TensorHeatmap({
           const p = locate(e);
           onCell?.(p.r, p.c, p.v);
         }}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          const cur = cursor ?? { r: 0, c: 0 };
+          const next = { ...cur };
+          if (e.key === 'ArrowRight') next.c = Math.min(cols - 1, cur.c + 1);
+          else if (e.key === 'ArrowLeft') next.c = Math.max(0, cur.c - 1);
+          else if (e.key === 'ArrowDown') next.r = Math.min(rows - 1, cur.r + 1);
+          else if (e.key === 'ArrowUp') next.r = Math.max(0, cur.r - 1);
+          else if (e.key === 'Enter') {
+            onCell?.(cur.r, cur.c, data[cur.r * cols + cur.c]);
+            return;
+          } else return;
+          e.preventDefault();
+          setCursor(next);
+        }}
+        onBlur={() => setCursor(null)}
       />
+      {/* keyboard cursor readout — also the screen-reader value channel */}
+      <p aria-live="polite" className={`nums mt-1 text-xs text-muted ${cursor ? '' : 'sr-only'}`}>
+        {cursor
+          ? `[${rowLabels?.[cursor.r] ?? cursor.r}, ${colLabels?.[cursor.c] ?? cursor.c}] = ${
+              Number.isFinite(data[cursor.r * cols + cursor.c])
+                ? data[cursor.r * cols + cursor.c].toFixed(5)
+                : '−∞ (masked)'
+            }`
+          : ''}
+      </p>
       {hover && (
         <div
           className="nums pointer-events-none absolute z-10 rounded border border-line bg-raised px-2 py-1 text-xs shadow-lg"

@@ -8,13 +8,6 @@ import { useTranslations } from 'next-intl';
 import { useModelStore } from '@/stores/modelStore';
 import { useTraceStore } from '@/stores/traceStore';
 
-// Temporary diagnostics: reachable from the browser console.
-if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).__stores = {
-    model: useModelStore,
-    trace: useTraceStore,
-  };
-}
 
 export function InspectBar() {
   const t = useTranslations('inspect');

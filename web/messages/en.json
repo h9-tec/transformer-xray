@@ -1,8 +1,23 @@
 {
   "home": {
     "title": "Transformer X-Ray",
-    "tagline": "A real GPT, thinking and learning in your browser. Every number is real.",
-    "cta": "Open the playground"
+    "tagline": "A 1.8M-parameter GPT thinking and learning live in your browser. Every tensor, every gradient, every CUDA kernel — inspectable, and provably the same math PyTorch computes.",
+    "cta": "Open the playground",
+    "kicker": "llm math + cuda · junior to senior",
+    "doorPlay": "Make it write",
+    "doorTrain": "Watch it learn",
+    "doorInspect": "X-ray the math",
+    "stats": {
+      "params": "parameters — small enough to see whole",
+      "valLoss": "val loss, honest and displayed",
+      "parityTests": "parity tests vs PyTorch, all green",
+      "inBrowser": "computed in your browser — nothing canned"
+    },
+    "realTitle": "Real, not canned",
+    "realBody": "The forward pass, the backward pass, and one AdamW step are hand-written in TypeScript and tested tensor-for-tensor against PyTorch golden traces (forward < 1e-4, gradients < 5e-4). The CUDA kernels in the GPU panels compile and are verified against CPU references at this model's exact shapes. When you hover a heatmap cell, you read a real fp32 value.",
+    "deepTitle": "Two depths, one pipeline",
+    "deepBody": "Every page speaks twice: an intuition track for engineers meeting transformers, and a full-depth track with the derivations — why √d_k, why softmax subtracts the max, why LayerNorm caches 1/σ, why Adam's first step is sign descent, why tiling cuts memory traffic 32×. Flip the switch anytime; flip the phase and the whole app mirrors into gradients.",
+    "footer": "Tiny Shakespeare · GPT-2 architecture · trained in minutes on one consumer GPU · everything open in the repo"
   },
   "nav": {
     "playground": "Playground",
