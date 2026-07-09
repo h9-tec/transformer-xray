@@ -1,0 +1,31 @@
+# MLP
+
+Widen ×4, gate, project back:
+
+$$
+\mathrm{MLP}(x) = \mathrm{GELU}(xW_1 + b_1)\,W_2 + b_2
+$$
+
+<Junior>
+  Attention *moves* information between positions; the MLP *thinks* about each
+  position independently. It expands every 192-dim vector to 768 numbers,
+  keeps the useful ones (GELU lets positives through and squashes negatives),
+  and compresses back. Look at the gelu heatmap: the blue half of fc has gone
+  dark.
+</Junior>
+
+<Senior>
+  GELU here is the **tanh approximation** — the exact GPT-2 formula:
+
+  $$
+  0.5x\left(1 + \tanh\!\left[\sqrt{2/\pi}\,(x + 0.044715x^3)\right]\right)
+  $$
+
+  Never mix it with the erf form: they differ by ~10⁻³ and cross-implementation
+  parity dies. Unlike ReLU it's smooth (no dead gradients at 0⁻), and its
+  derivative at 0 is exactly ½.
+
+  The two matmuls here are ⅔ of the block's FLOPs — $2 \cdot 4d^2$ each vs
+  $4d^2$ for all of attention's projections — which is why MLP kernels
+  dominate GPU time in real models too.
+</Senior>

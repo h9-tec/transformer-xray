@@ -1,0 +1,29 @@
+# Self-attention
+
+Every position asks a question ($Q$), every position advertises what it has
+($K$), and information flows where they agree:
+
+$$
+\mathrm{Attention}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top + M}{\sqrt{d_k}}\right)V
+$$
+
+<Junior>
+  Read one row of the softmax matrix: it's that character deciding **which
+  earlier characters to look at**, with weights that sum to 1. The dark upper
+  triangle is the causal mask — you can't look at the future. Flip between the
+  six heads: each one learned a different habit (previous character, start of
+  the word, matching punctuation…).
+</Junior>
+
+<Senior>
+  With $q, k$ roughly unit-variance, $\mathrm{Var}(q \cdot k) = d_k$ — so raw
+  scores at $d_k = 32$ have σ ≈ 5.7, enough to saturate softmax and kill
+  gradients at init. Dividing by $\sqrt{d_k}$ restores unit variance; compare
+  the first two heatmaps and watch the color range shrink.
+
+  The mask adds $-\infty$ *before* softmax, so masked positions get exactly
+  $e^{-\infty} = 0$ probability — and exactly zero gradient (see the backward
+  mirror). Heads are just a reshape: the same $[T, 192]$ qkv tensor viewed as
+  6 independent $[T, 32]$ subspaces — no extra parameters, no extra FLOPs
+  versus one big head, but 6 separate attention strategies.
+</Senior>

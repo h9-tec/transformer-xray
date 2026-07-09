@@ -1,0 +1,28 @@
+# The residual stream
+
+Nothing "passes through" layers — there is one stream per position, and every
+sublayer just **adds** to it:
+
+$$
+x_{\ell+1} = x_\ell + \mathrm{Sublayer}(\mathrm{LN}(x_\ell))
+$$
+
+<Junior>
+  Think of each position's vector as a shared whiteboard. Attention writes a
+  note, the MLP writes a note, and the whiteboard itself is never erased.
+  That's why the heatmaps down this page look like the same picture gaining
+  detail — and why the norm curve grows: information accumulates.
+</Junior>
+
+<Senior>
+  The additive form makes the network an ensemble of paths: expanding the
+  recursion, the identity path $x_0 \to x_L$ exists untouched, so gradients
+  reach layer 0 with norm ~1 regardless of depth — *the* fix that made deep
+  transformers trainable. In the backward mirror you can watch the gradient
+  arrive at each `res` node and split: one copy into the sublayer, one copy
+  straight down the skip.
+
+  The stream is also a **bandwidth bottleneck**: every head and MLP shares
+  the same 192 dimensions, so features compete for subspaces — the reason
+  interpretability work speaks of "writing" and "reading" directions.
+</Senior>

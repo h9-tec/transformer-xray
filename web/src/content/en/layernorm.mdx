@@ -1,0 +1,29 @@
+# LayerNorm
+
+Every position's vector is re-centered and re-scaled — then given back a
+learnable scale and shift:
+
+$$
+\mathrm{LN}(x) = \frac{x - \mu}{\sqrt{\sigma^2 + \varepsilon}} \odot g + b
+$$
+
+<Junior>
+  Residual streams drift: after a few layers some vectors are much bigger than
+  others, which makes everything downstream unstable. LayerNorm resets every
+  row to a standard size before attention and before the MLP — compare the
+  input and output heatmaps: the output's color range is uniform.
+</Junior>
+
+<Senior>
+  Details that bite in practice: the variance is **biased** (divide by $d$,
+  not $d-1$), and $\varepsilon = 10^{-5}$ sits **inside** the square root —
+  both must match between implementations or parity fails at the fourth
+  decimal. This model is **pre-LN** (norm before the sublayer, GPT-2 style),
+  which keeps the residual path an identity — gradients flow through
+  unnormalized, one reason deep pre-LN transformers train without warmup
+  tricks.
+
+  μ and 1/σ are cached per row: the backward pass reuses them, and its
+  closed form subtracts two projections — the gradient can't change a row's
+  mean or scale, because the forward op erased that information.
+</Senior>
