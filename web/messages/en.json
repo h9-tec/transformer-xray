@@ -26,13 +26,35 @@
     "attention": "Attention",
     "mlp": "MLP",
     "residual": "Residual stream",
-    "logits": "Logits & sampling"
+    "logits": "Logits & sampling",
+    "loss": "Loss",
+    "optimizer": "AdamW",
+    "trainingGroup": "training"
   },
   "inspect": {
     "inputLabel": "Text to inspect",
     "traceButton": "trace",
     "tracing": "tracing…",
     "liveNote": "forward + backward computed live in your browser",
-    "waiting": "waiting for the model…"
+    "waiting": "waiting for the model…",
+    "phaseLabel": "Data flow direction",
+    "phaseForward": "Forward",
+    "phaseBackward": "Backward"
+  },
+  "train": {
+    "title": "Watch it learn",
+    "subtitle": "A real training loop — forward, backprop, AdamW — running in your browser. Start from random noise and watch a language emerge, or fine-tune the trained checkpoint.",
+    "source": "Starting point",
+    "fromScratch": "from random noise",
+    "fromCheckpoint": "from the checkpoint",
+    "start": "start training",
+    "resume": "resume",
+    "pause": "pause",
+    "reset": "reset",
+    "step": "step",
+    "loss": "loss",
+    "inspectNow": "x-ray the current weights",
+    "openInspectors": "open inspectors",
+    "sampleTitle": "what it writes at step {step}"
   }
 }

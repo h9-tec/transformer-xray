@@ -15,6 +15,7 @@ export:
 	$(PY) model/export.py
 	mkdir -p web/public/model
 	cp model/artifacts/weights.bin model/artifacts/config.json model/artifacts/tokenizer.json web/public/model/
+	head -c 262144 model/data/input.txt > web/public/model/corpus.txt
 
 golden:
 	$(PY) model/golden.py

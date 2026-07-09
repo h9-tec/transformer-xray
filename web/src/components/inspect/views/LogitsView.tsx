@@ -8,7 +8,8 @@ import { useMemo, useState } from 'react';
 import { LogitsBars } from '@/components/playground/LogitsBars';
 import { TensorHeatmap } from '@/components/heatmap/TensorHeatmap';
 import { useModelStore } from '@/stores/modelStore';
-import { currentTrace, useTraceStore } from '@/stores/traceStore';
+import { currentTrace, nodeForPhase, useTraceStore } from '@/stores/traceStore';
+import { useUiStore } from '@/stores/uiStore';
 
 const GLYPH: Record<string, string> = { '\n': '↵', ' ': '␣' };
 const label = (ch: string) => GLYPH[ch] ?? ch;
@@ -18,14 +19,16 @@ export function LogitsView() {
   const version = useTraceStore((s) => s.version);
   const text = useTraceStore((s) => s.text);
   const [pos, setPos] = useState<number | null>(null);
+  const phase = useUiStore((s) => s.phase);
+  const bwd = phase === 'backward';
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nodes = useMemo(() => {
     const t = currentTrace();
     return t
-      ? { logits: t.byId.get('logits'), perToken: t.byId.get('loss.per_token') }
+      ? { logits: nodeForPhase('logits', phase), perToken: t.byId.get('loss.per_token') }
       : null;
-  }, [version]);
+  }, [version, phase]);
 
   if (!nodes?.logits?.data || !chars) return <p className="text-sm text-faint">…</p>;
 
@@ -41,7 +44,9 @@ export function LogitsView() {
     <div className="space-y-6">
       <div>
         <h3 className="mb-2 text-sm text-muted">
-          logits [{T} × {V}] — one next-character question per row; click a row
+          {bwd
+            ? `∂L/∂logits [${T} × ${V}] = (p − onehot)/T — amber blame everywhere the model bet, blue credit at the truth`
+            : `logits [${T} × ${V}] — one next-character question per row; click a row`}
         </h3>
         <TensorHeatmap
           data={nodes.logits.data}

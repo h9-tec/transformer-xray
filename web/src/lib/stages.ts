@@ -12,3 +12,8 @@ export const FORWARD_STAGES: Stage[] = [
   { slug: 'residual', key: 'residual' },
   { slug: 'logits', key: 'logits' },
 ];
+
+export const TRAIN_STAGES: Stage[] = [
+  { slug: 'loss', key: 'loss' },
+  { slug: 'optimizer', key: 'optimizer' },
+];

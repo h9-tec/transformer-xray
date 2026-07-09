@@ -14,6 +14,17 @@ export function currentTrace(): TraceResult | null {
   return result;
 }
 
+/** Resolve a node id honoring the phase: in backward mode, return the
+ * gradient twin when one exists (grad:<id>), else the forward node. */
+export function nodeForPhase(id: string, phase: 'forward' | 'backward') {
+  if (!result) return undefined;
+  if (phase === 'backward') {
+    const twin = result.byId.get(`grad:${id}`);
+    if (twin) return twin;
+  }
+  return result.byId.get(id);
+}
+
 /** Default inspection text — the same passage the parity suite pins down. */
 export const DEFAULT_TEXT = 'First Citizen:\nBefore we proceed any further, hear me speak.\nAll:\n';
 
@@ -25,6 +36,7 @@ interface TraceState {
   T: number;
   version: number;
   setText: (t: string) => void;
+  applyExternal: (r: TraceResult, text: string) => void;
   trace: () => Promise<void>;
 }
 
@@ -37,6 +49,19 @@ export const useTraceStore = create<TraceState>((set, get) => ({
   version: 0,
 
   setText: (text) => set({ text }),
+
+  /** Adopt a trace produced elsewhere (e.g. the training page tracing the
+   * live params) so every inspector page shows it. */
+  applyExternal(r: TraceResult, text: string) {
+    result = r;
+    set((s) => ({
+      text,
+      status: 'ready',
+      loss: r.loss ?? null,
+      T: text.length - 1,
+      version: s.version + 1,
+    }));
+  },
 
   async trace() {
     const { text, status } = get();

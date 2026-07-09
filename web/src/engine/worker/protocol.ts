@@ -12,6 +12,14 @@ export interface GenerateParams {
   seed: number | null; // null = greedy
 }
 
+export interface TrainParams {
+  steps: number;
+  seqLen: number;
+  lr: number;
+  /** post a generation sample every N steps (0 = never) */
+  sampleEvery: number;
+}
+
 export type WorkerRequest =
   | {
       id: number;
@@ -22,7 +30,18 @@ export type WorkerRequest =
       weightsBuffer: ArrayBuffer;
     }
   | { id: number; type: 'generate'; params: GenerateParams }
-  | { id: number; type: 'trace'; text: string; targets?: string };
+  | { id: number; type: 'trace'; text: string; targets?: string }
+  | {
+      id: number;
+      type: 'trainInit';
+      fromScratch: boolean;
+      seed: number;
+      /** training corpus text, fetched by the main thread */
+      corpus: string;
+    }
+  | { id: number; type: 'trainRun'; params: TrainParams }
+  | { id: number; type: 'trainStop' }
+  | { id: number; type: 'trainReset' };
 
 /** TraceNode with its Float32Array detached into a transferable buffer. */
 export interface WireNode {
@@ -41,6 +60,12 @@ export interface WireNode {
   costs: Costs;
 }
 
+export interface WireParamGrad {
+  name: string;
+  shape: number[];
+  buffer: ArrayBuffer;
+}
+
 export type WorkerResponse =
   | { id: number; type: 'ready'; cfgJson: ModelConfigJson; chars: string }
   | {
@@ -52,5 +77,17 @@ export type WorkerResponse =
       logits: ArrayBuffer;
     }
   | { id: number; type: 'generated'; text: string }
-  | { id: number; type: 'traced'; nodes: WireNode[]; loss?: number }
+  | {
+      id: number;
+      type: 'traced';
+      nodes: WireNode[];
+      loss?: number;
+      /** per-parameter gradients (present when targets were given) */
+      paramGrads: WireParamGrad[];
+      /** true when the trace ran against live training params, not the checkpoint */
+      trainedParams: boolean;
+    }
+  | { id: number; type: 'trainReady'; fromScratch: boolean }
+  | { id: number; type: 'trainProgress'; step: number; loss: number; sample?: string }
+  | { id: number; type: 'trainDone'; step: number }
   | { id: number; type: 'error'; message: string };

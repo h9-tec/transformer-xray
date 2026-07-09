@@ -6,7 +6,8 @@
 import { useMemo, useState } from 'react';
 import { TensorHeatmap } from '@/components/heatmap/TensorHeatmap';
 import { useModelStore } from '@/stores/modelStore';
-import { currentTrace, useTraceStore } from '@/stores/traceStore';
+import { currentTrace, nodeForPhase, useTraceStore } from '@/stores/traceStore';
+import { useUiStore } from '@/stores/uiStore';
 
 const GLYPH: Record<string, string> = { '\n': '↵', ' ': '␣' };
 
@@ -23,6 +24,8 @@ export function LayerNormView() {
   const text = useTraceStore((s) => s.text);
   const [layer, setLayer] = useState(0);
   const [site, setSite] = useState(0);
+  const phase = useUiStore((s) => s.phase);
+  const bwd = phase === 'backward';
 
   const nLayer = cfgJson?.model.n_layer ?? 4;
   const lastLayer = nLayer - 1;
@@ -35,12 +38,12 @@ export function LayerNormView() {
     const b = site === 2 ? lastLayer : layer;
     const id = s.id(b);
     return {
-      input: t.byId.get(s.input(b)),
-      out: t.byId.get(id),
+      input: nodeForPhase(s.input(b), phase),
+      out: nodeForPhase(id, phase),
       mean: t.byId.get(`${id}.mean`),
       rstd: t.byId.get(`${id}.rstd`),
     };
-  }, [version, layer, site, lastLayer]);
+  }, [version, layer, site, lastLayer, phase]);
 
   if (!nodes?.out?.data || !chars) return <p className="text-sm text-faint">…</p>;
 
@@ -87,7 +90,9 @@ export function LayerNormView() {
 
       {nodes.input?.data && (
         <div>
-          <h3 className="mb-2 text-sm text-muted">input x [{T} × {D}] — drifting scales</h3>
+          <h3 className="mb-2 text-sm text-muted">
+            {bwd ? `∂L/∂x [${T} × ${D}] — gradient entering below` : `input x [${T} × ${D}] — drifting scales`}
+          </h3>
           <TensorHeatmap
             data={nodes.input.data}
             rows={T}
@@ -101,7 +106,11 @@ export function LayerNormView() {
       )}
 
       <div>
-        <h3 className="mb-2 text-sm text-muted">output — every row re-centered to μ=0, σ=1, then scaled by g and shifted by b</h3>
+        <h3 className="mb-2 text-sm text-muted">
+          {bwd
+            ? '∂L/∂output — the closed-form backward reuses the cached μ and 1/σ below'
+            : 'output — every row re-centered to μ=0, σ=1, then scaled by g and shifted by b'}
+        </h3>
         <TensorHeatmap
           data={nodes.out.data}
           rows={T}

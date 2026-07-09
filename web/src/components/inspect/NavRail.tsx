@@ -2,15 +2,14 @@
 
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/navigation';
-import { FORWARD_STAGES } from '@/lib/stages';
+import { FORWARD_STAGES, TRAIN_STAGES, type Stage } from '@/lib/stages';
 
-export function NavRail() {
+function Group({ stages, accent }: { stages: Stage[]; accent: 'fwd' | 'bwd' }) {
   const t = useTranslations('pipeline');
   const pathname = usePathname();
-
   return (
-    <nav aria-label={t('label')} className="space-y-1">
-      {FORWARD_STAGES.map((s) => {
+    <>
+      {stages.map((s) => {
         const href = `/inspect/${s.slug}`;
         const active = pathname === href;
         return (
@@ -20,7 +19,7 @@ export function NavRail() {
             aria-current={active ? 'page' : undefined}
             className={`block rounded px-3 py-1.5 text-sm transition-colors ${
               active
-                ? 'border-s-2 border-fwd bg-raised text-ink'
+                ? `border-s-2 bg-raised text-ink ${accent === 'fwd' ? 'border-fwd' : 'border-bwd'}`
                 : 'text-muted hover:bg-surface hover:text-ink'
             }`}
           >
@@ -28,6 +27,17 @@ export function NavRail() {
           </Link>
         );
       })}
+    </>
+  );
+}
+
+export function NavRail() {
+  const t = useTranslations('pipeline');
+  return (
+    <nav aria-label={t('label')} className="space-y-1">
+      <Group stages={FORWARD_STAGES} accent="fwd" />
+      <p className="pt-3 text-xs uppercase tracking-wide text-faint">{t('trainingGroup')}</p>
+      <Group stages={TRAIN_STAGES} accent="bwd" />
     </nav>
   );
 }

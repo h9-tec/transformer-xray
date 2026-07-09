@@ -8,7 +8,8 @@ import { useMemo, useState } from 'react';
 import { TensorHeatmap } from '@/components/heatmap/TensorHeatmap';
 import type { TraceNode } from '@/engine/tape';
 import { useModelStore } from '@/stores/modelStore';
-import { currentTrace, useTraceStore } from '@/stores/traceStore';
+import { currentTrace, nodeForPhase, useTraceStore } from '@/stores/traceStore';
+import { useUiStore } from '@/stores/uiStore';
 
 const GLYPH: Record<string, string> = { '\n': '↵', ' ': '␣' };
 
@@ -23,7 +24,7 @@ function meanL2(node: TraceNode): number {
   return total / T;
 }
 
-function NormChart({ points, labels }: { points: number[]; labels: string[] }) {
+function NormChart({ points, labels, color = 'var(--color-fwd)' }: { points: number[]; labels: string[]; color?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const W = 520;
   const H = 130;
@@ -34,7 +35,7 @@ function NormChart({ points, labels }: { points: number[]; labels: string[] }) {
   return (
     <figure>
       <figcaption className="mb-1 text-xs text-muted">
-        mean ‖x‖₂ per stage{' '}
+        mean ‖·‖₂ per stage{' '}
         {hover !== null && (
           <span className="nums text-ink">
             — {labels[hover]}: {points[hover].toFixed(2)}
@@ -46,7 +47,7 @@ function NormChart({ points, labels }: { points: number[]; labels: string[] }) {
         <polyline
           points={points.map((p, i) => `${x(i)},${y(p)}`).join(' ')}
           fill="none"
-          stroke="var(--color-fwd)"
+          stroke={color}
           strokeWidth="2"
         />
         {points.map((p, i) => (
@@ -60,7 +61,7 @@ function NormChart({ points, labels }: { points: number[]; labels: string[] }) {
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}
             />
-            <circle cx={x(i)} cy={y(p)} r={hover === i ? 5 : 3.5} fill="var(--color-fwd)" />
+            <circle cx={x(i)} cy={y(p)} r={hover === i ? 5 : 3.5} fill={color} />
             <text x={x(i)} y={H - 10} textAnchor="middle" fontSize="9" fill="var(--color-faint)" className="nums">
               {labels[i]}
             </text>
@@ -77,6 +78,8 @@ export function ResidualView() {
   const version = useTraceStore((s) => s.version);
   const text = useTraceStore((s) => s.text);
   const nLayer = cfgJson?.model.n_layer ?? 4;
+  const phase = useUiStore((s) => s.phase);
+  const bwd = phase === 'backward';
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const stream = useMemo(() => {
@@ -84,16 +87,16 @@ export function ResidualView() {
     if (!t) return null;
     const stages: { id: string; short: string; node: TraceNode }[] = [];
     const add = (id: string, short: string) => {
-      const node = t.byId.get(id);
-      if (node?.data) stages.push({ id, short, node });
+      const node = nodeForPhase(id, phase);
+      if (node?.data) stages.push({ id: node.id, short, node });
     };
     add('emb.sum', 'emb');
     for (let b = 0; b < nLayer; b++) {
       add(`block${b}.res1`, `${b}·attn`);
       add(`block${b}.res2`, `${b}·mlp`);
     }
-    return stages;
-  }, [version, nLayer]);
+    return bwd ? stages.reverse() : stages; // backward: blame flows right-to-left
+  }, [version, nLayer, phase]);
 
   if (!stream || stream.length === 0 || !chars) return <p className="text-sm text-faint">…</p>;
 
@@ -102,7 +105,7 @@ export function ResidualView() {
 
   return (
     <div className="space-y-6">
-      <NormChart points={norms} labels={stream.map((s) => s.short)} />
+      <NormChart points={norms} labels={stream.map((s) => s.short)} color={bwd ? 'var(--color-bwd)' : 'var(--color-fwd)'} />
       <div className="space-y-3">
         {stream.map((s) => (
           <div key={s.id}>

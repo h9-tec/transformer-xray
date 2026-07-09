@@ -1,0 +1,28 @@
+# Loss
+
+One number that says how surprised the model was, averaged over positions:
+
+$$
+\mathcal{L} = \frac{1}{T}\sum_{t} -\ln p_t[y_t]
+$$
+
+<Junior>
+  At every position the model bet a probability on each possible next
+  character. The loss just reads off the probability it gave the **true**
+  next character: confident and right ≈ 0; confident and wrong → huge.
+  Training is nothing more than nudging weights to shrink this number.
+</Junior>
+
+<Senior>
+  Softmax + cross-entropy fuse into the cleanest gradient in deep learning:
+
+  $$
+  \frac{\partial \mathcal{L}}{\partial \ell_t} = \frac{p_t - \mathbb{1}_{y_t}}{T}
+  $$
+
+  *Probabilities minus truth.* No softmax Jacobian ever gets materialized —
+  the log cancels the exp. Each row sums to zero (softmax is shift-invariant,
+  so the gradient can't push all logits together), and its magnitude is
+  bounded by 1/T per entry — one reason CE training is stable where MSE on
+  probabilities is not.
+</Senior>

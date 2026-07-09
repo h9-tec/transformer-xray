@@ -6,7 +6,8 @@
 import { useMemo, useState } from 'react';
 import { TensorHeatmap } from '@/components/heatmap/TensorHeatmap';
 import { useModelStore } from '@/stores/modelStore';
-import { currentTrace, useTraceStore } from '@/stores/traceStore';
+import { nodeForPhase, useTraceStore } from '@/stores/traceStore';
+import { useUiStore } from '@/stores/uiStore';
 
 const GLYPH: Record<string, string> = { '\n': '↵', ' ': '␣' };
 
@@ -34,19 +35,19 @@ export function MlpView() {
   const version = useTraceStore((s) => s.version);
   const text = useTraceStore((s) => s.text);
   const [layer, setLayer] = useState(0);
+  const phase = useUiStore((s) => s.phase);
+  const bwd = phase === 'backward';
   const nLayer = cfgJson?.model.n_layer ?? 4;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nodes = useMemo(() => {
-    const t = currentTrace();
-    if (!t) return null;
     const p = `block${layer}.mlp`;
     return {
-      fc: t.byId.get(`${p}.fc`),
-      gelu: t.byId.get(`${p}.gelu`),
-      proj: t.byId.get(`${p}.proj`),
+      fc: nodeForPhase(`${p}.fc`, phase),
+      gelu: nodeForPhase(`${p}.gelu`, phase),
+      proj: nodeForPhase(`${p}.proj`, phase),
     };
-  }, [version, layer]);
+  }, [version, layer, phase]);
 
   if (!nodes?.fc?.data || !chars) return <p className="text-sm text-faint">…</p>;
 
@@ -76,9 +77,9 @@ export function MlpView() {
 
       {(
         [
-          ['fc', nodes.fc, 'x·W_fc + b — widened ×4'],
-          ['gelu', nodes.gelu, 'gelu(fc) — negatives gated toward zero'],
-          ['proj', nodes.proj, 'gelu·W_proj + b — back to the stream'],
+          ['fc', nodes.fc, bwd ? '∂L/∂fc — after the GELU gate' : 'x·W_fc + b — widened ×4'],
+          ['gelu', nodes.gelu, bwd ? '∂L/∂gelu — arriving from the projection' : 'gelu(fc) — negatives gated toward zero'],
+          ['proj', nodes.proj, bwd ? '∂L/∂proj — the update this block receives' : 'gelu·W_proj + b — back to the stream'],
         ] as const
       ).map(([key, node, title]) =>
         node?.data ? (

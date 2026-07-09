@@ -1,0 +1,40 @@
+# AdamW
+
+The exact update, in PyTorch's order of operations:
+
+$$
+\theta \leftarrow \theta(1 - \gamma\lambda)
+$$
+
+$$
+m \leftarrow \beta_1 m + (1{-}\beta_1)g \qquad v \leftarrow \beta_2 v + (1{-}\beta_2)g^2
+$$
+
+$$
+\theta \leftarrow \theta - \gamma\,\frac{\hat m}{\sqrt{\hat v} + \varepsilon},
+\qquad \hat m = \tfrac{m}{1-\beta_1^t},\; \hat v = \tfrac{v}{1-\beta_2^t}
+$$
+
+<Junior>
+  Plain gradient descent takes steps proportional to the gradient — huge
+  where the surface is steep, nothing where it's flat. Adam keeps a running
+  average of each weight's gradient (momentum, $m$) and of its square
+  (a per-weight volume knob, $v$), so every weight gets a step of roughly
+  the same size in the right direction. Look at the Δθ heatmap: almost all
+  cells are ±lr.
+</Junior>
+
+<Senior>
+  At $t{=}1$ the bias corrections cancel exactly: $\hat m = g$,
+  $\hat v = g^2$, so $\Delta\theta \approx -\gamma\,\mathrm{sign}(g)$ —
+  Adam's first step is sign descent, which is why the Δ panel is nearly
+  binary. The $\varepsilon$ outside the square root (AdamW/PyTorch
+  convention) only matters where $|g| \lesssim \varepsilon$.
+
+  The **W** is decoupled weight decay: $\theta$ shrinks multiplicatively
+  *before* the update, instead of adding $\lambda\theta$ into $g$ where the
+  $1/\sqrt{\hat v}$ normalization would distort it — the fix that made
+  weight decay meaningful for adaptive optimizers (Loshchilov & Hutter).
+  Optimizer state is 2× the model: $m$ and $v$ are each another full copy —
+  at GPT-3 scale, that's the memory bill.
+</Senior>

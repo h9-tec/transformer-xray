@@ -2,7 +2,13 @@
 
 import type { TraceNode } from '../tape';
 import type { ModelConfigJson } from '../weights';
-import type { GenerateParams, WireNode, WorkerRequest, WorkerResponse } from './protocol';
+import type {
+  GenerateParams,
+  TrainParams,
+  WireNode,
+  WorkerRequest,
+  WorkerResponse,
+} from './protocol';
 import { WORKER_URL } from './worker-url';
 
 export interface TokenEvent {
@@ -11,10 +17,25 @@ export interface TokenEvent {
   logits: Float32Array;
 }
 
+export interface ParamGrad {
+  name: string;
+  shape: number[];
+  data: Float32Array;
+}
+
 export interface TraceResult {
   nodes: TraceNode[];
   byId: Map<string, TraceNode>;
   loss?: number;
+  paramGrads: Map<string, ParamGrad>;
+  /** true when traced against live training params rather than the checkpoint */
+  trainedParams: boolean;
+}
+
+export interface TrainProgress {
+  step: number;
+  loss: number;
+  sample?: string;
 }
 
 /** Omit distributed over the request union (plain Omit collapses unions). */
@@ -28,6 +49,7 @@ interface Pending {
   resolve: (v: unknown) => void;
   reject: (e: Error) => void;
   onToken?: (t: TokenEvent) => void;
+  onProgress?: (p: TrainProgress) => void;
 }
 
 function rehydrate(w: WireNode): TraceNode {
@@ -78,9 +100,14 @@ export class EngineClient {
       case 'token':
         p.onToken?.({ index: msg.index, token: msg.token, logits: new Float32Array(msg.logits) });
         break;
+      case 'trainProgress':
+        p.onProgress?.({ step: msg.step, loss: msg.loss, sample: msg.sample });
+        break;
       case 'ready':
       case 'generated':
       case 'traced':
+      case 'trainReady':
+      case 'trainDone':
         this.pending.delete(msg.id);
         p.resolve(msg);
         break;
@@ -93,12 +120,12 @@ export class EngineClient {
 
   private send<T>(
     req: OutgoingRequest,
-    onToken?: (t: TokenEvent) => void,
+    handlers: Pick<Pending, 'onToken' | 'onProgress'> = {},
     transfer: Transferable[] = [],
   ): Promise<T> {
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onToken });
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, ...handlers });
       this.worker.postMessage({ ...req, id }, transfer);
     });
   }
@@ -112,7 +139,7 @@ export class EngineClient {
   ): Promise<{ cfgJson: ModelConfigJson; chars: string }> {
     const r = await this.send<WorkerResponse & { type: 'ready' }>(
       { type: 'init', cfgJson, chars, weightsBuffer },
-      undefined,
+      {},
       [weightsBuffer],
     );
     return { cfgJson: r.cfgJson, chars: r.chars };
@@ -121,15 +148,60 @@ export class EngineClient {
   async generate(params: GenerateParams, onToken: (t: TokenEvent) => void): Promise<string> {
     const r = await this.send<WorkerResponse & { type: 'generated' }>(
       { type: 'generate', params },
-      onToken,
+      { onToken },
     );
     return r.text;
   }
 
   async trace(text: string, targets?: string): Promise<TraceResult> {
-    const r = await this.send<WorkerResponse & { type: 'traced' }>({ type: 'trace', text, targets });
+    const r = await this.send<WorkerResponse & { type: 'traced' }>({
+      type: 'trace',
+      text,
+      targets,
+    });
     const nodes = r.nodes.map(rehydrate);
-    return { nodes, byId: new Map(nodes.map((n) => [n.id, n])), loss: r.loss };
+    const paramGrads = new Map(
+      r.paramGrads.map((g) => [
+        g.name,
+        { name: g.name, shape: g.shape, data: new Float32Array(g.buffer) },
+      ]),
+    );
+    return {
+      nodes,
+      byId: new Map(nodes.map((n) => [n.id, n])),
+      loss: r.loss,
+      paramGrads,
+      trainedParams: r.trainedParams,
+    };
+  }
+
+  async trainInit(fromScratch: boolean, seed: number, corpus: string): Promise<void> {
+    await this.send<WorkerResponse & { type: 'trainReady' }>({
+      type: 'trainInit',
+      fromScratch,
+      seed,
+      corpus,
+    });
+  }
+
+  /** Resolves when the run finishes or trainStop is honored. */
+  async trainRun(
+    params: TrainParams,
+    onProgress: (p: TrainProgress) => void,
+  ): Promise<{ step: number }> {
+    const r = await this.send<WorkerResponse & { type: 'trainDone' }>(
+      { type: 'trainRun', params },
+      { onProgress },
+    );
+    return { step: r.step };
+  }
+
+  trainStop(): void {
+    this.worker.postMessage({ id: this.nextId++, type: 'trainStop' });
+  }
+
+  trainReset(): void {
+    this.worker.postMessage({ id: this.nextId++, type: 'trainReset' });
   }
 
   terminate(): void {
