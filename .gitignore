@@ -1,0 +1,19 @@
+# Python
+model/.venv/
+model/data/
+__pycache__/
+*.pyc
+
+# Node
+web/node_modules/
+web/.next/
+web/out/
+web/playwright-report/
+web/test-results/
+
+# CUDA build
+kernels/build/
+
+# Misc
+.DS_Store
+*.log
