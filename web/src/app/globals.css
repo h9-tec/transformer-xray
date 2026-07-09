@@ -1,0 +1,85 @@
+@import 'tailwindcss';
+
+/* ─── Design tokens ────────────────────────────────────────────────────
+   Aesthetic: lab instrument / oscilloscope. Deep blue-black chassis,
+   hairline grid, phosphor-glow accents. Color encodes the curriculum:
+   green = forward pass, magenta = backward pass, periwinkle = update,
+   amber = interactive. */
+
+@theme {
+  --color-bg: #0c0d12;
+  --color-surface: #12141b;
+  --color-raised: #191c26;
+  --color-line: #262a38;
+  --color-ink: #e7eaf3;
+  --color-muted: #8e96aa;
+  --color-faint: #5c6377;
+
+  --color-accent: #ffb454; /* amber — interactive, highlights */
+  --color-fwd: #3ddc97; /* phosphor green — forward pass */
+  --color-bwd: #ff6ac1; /* magenta — backward pass / gradients */
+  --color-update: #7aa2ff; /* periwinkle — optimizer / weight updates */
+  --color-danger: #ff5c5c;
+}
+
+@theme inline {
+  --font-display: var(--font-bricolage), sans-serif;
+  --font-body: var(--font-plex), var(--font-plex-arabic), sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+  --font-arabic: var(--font-plex-arabic), sans-serif;
+}
+
+/* ─── Base ─── */
+
+body {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgb(122 162 255 / 0.06), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgb(61 220 151 / 0.04), transparent 55%),
+    var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  min-height: 100dvh;
+}
+
+:lang(ar) body {
+  font-family: var(--font-arabic);
+  line-height: 1.9; /* Arabic needs more breathing room than Latin */
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Exact numbers everywhere: tabular, mono, no surprises. */
+.nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Numbers and code stay LTR inside RTL text. */
+.ltr-island {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ─── Depth gating (junior/senior) ───
+   Both variants are in the static HTML; CSS picks one. No hydration cost. */
+
+:root[data-depth='junior'] .senior-only {
+  display: none;
+}
+:root[data-depth='senior'] .junior-only {
+  display: none;
+}
+
+/* ─── KaTeX on dark ─── */
+
+.katex {
+  font-size: 1.06em;
+}
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25rem;
+}

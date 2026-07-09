@@ -1,0 +1,14 @@
+{
+  "home": {
+    "title": "Transformer X-Ray",
+    "tagline": "A real GPT, thinking and learning in your browser. Every number is real.",
+    "cta": "Open the playground"
+  },
+  "nav": {
+    "playground": "Playground",
+    "train": "Training",
+    "inspect": "Inspect",
+    "depthJunior": "Intuition",
+    "depthSenior": "Full depth"
+  }
+}

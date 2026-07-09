@@ -1,0 +1,14 @@
+{
+  "home": {
+    "title": "Transformer X-Ray",
+    "tagline": "نموذج GPT حقيقي يفكّر ويتعلّم داخل متصفحك. كل رقم تراه حقيقي.",
+    "cta": "افتح الملعب"
+  },
+  "nav": {
+    "playground": "الملعب",
+    "train": "التدريب",
+    "inspect": "الفحص",
+    "depthJunior": "الحدس",
+    "depthSenior": "العمق الكامل"
+  }
+}

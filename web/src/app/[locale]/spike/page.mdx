@@ -1,0 +1,27 @@
+import { DepthToggle } from '@/components/DepthToggle';
+
+# M0 spike: MDX + KaTeX + i18n + static export
+
+This throwaway page proves the whole content chain works before any real
+content exists. If you can read the equation below with proper math
+typesetting, build-time KaTeX works.
+
+Attention scores are scaled by $\sqrt{d_k}$ before the softmax:
+
+$$
+\mathrm{Attention}(Q, K, V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+
+<DepthToggle />
+
+<Junior>
+  **Junior view.** Big dot products make softmax too confident — dividing by
+  $\sqrt{d_k}$ keeps the scores in a sane range.
+</Junior>
+
+<Senior>
+  **Senior view.** If $q, k \sim \mathcal{N}(0, 1)$ i.i.d., then
+  $\mathrm{Var}(q \cdot k) = d_k$; dividing by $\sqrt{d_k}$ restores unit
+  variance, keeping softmax out of its vanishing-gradient saturation regime
+  at initialization.
+</Senior>
