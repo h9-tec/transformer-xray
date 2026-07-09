@@ -18,7 +18,7 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
       </h1>
       <p className="max-w-xl text-lg text-muted">{t('tagline')}</p>
       <Link
-        href="/spike"
+        href="/playground"
         className="rounded-full border border-accent px-6 py-2 text-accent transition-colors hover:bg-accent hover:text-bg"
       >
         {t('cta')} →

@@ -10,5 +10,22 @@
     "inspect": "Inspect",
     "depthJunior": "Intuition",
     "depthSenior": "Full depth"
+  },
+  "playground": {
+    "title": "Playground",
+    "subtitle": "Type a prompt, watch a 1.8M-parameter GPT write Shakespeare — then click any character to see the exact distribution it was drawn from.",
+    "loading": "Loading 7.4 MB of real weights into your browser…",
+    "loadFailed": "The model failed to load.",
+    "hint": "Generate something, then click any green character to open its probability distribution."
+  },
+  "pipeline": {
+    "label": "Forward pipeline",
+    "tokens": "Tokens",
+    "embeddings": "Embeddings",
+    "layernorm": "LayerNorm",
+    "attention": "Attention",
+    "mlp": "MLP",
+    "residual": "Residual stream",
+    "logits": "Logits & sampling"
   }
 }
