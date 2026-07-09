@@ -73,6 +73,18 @@ export function loadGolden(name: 't4' | 't64'): Golden {
   return g;
 }
 
+/** Mixed absolute+relative tolerance: fp32 summation-order noise scales with
+ * magnitude, so large-valued tensors (raw attention scores ~O(30)) get
+ * proportionally more slack while probabilities stay tight. */
+export function mixedTol(golden: Float32Array, atol: number, rtol = 1e-5): number {
+  let absmax = 0;
+  for (let i = 0; i < golden.length; i++) {
+    const a = Math.abs(golden[i]);
+    if (Number.isFinite(a) && a > absmax) absmax = a;
+  }
+  return atol + rtol * absmax;
+}
+
 /** Max |a−b| treating equal infinities (masked −∞ cells) as zero diff. */
 export function maxAbsDiff(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) return Infinity;

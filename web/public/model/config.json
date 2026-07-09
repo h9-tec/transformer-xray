@@ -1,0 +1,450 @@
+{
+ "model": {
+  "n_layer": 4,
+  "n_embd": 192,
+  "n_head": 6,
+  "block_size": 256,
+  "vocab_size": 65,
+  "ln_eps": 1e-05,
+  "head_dim": 32
+ },
+ "val_loss": 1.5430220365524292,
+ "trained_iters": 1500,
+ "n_params": 1841472,
+ "tensors": [
+  {
+   "name": "wte",
+   "shape": [
+    65,
+    192
+   ],
+   "offset": 0,
+   "size": 12480
+  },
+  {
+   "name": "wpe",
+   "shape": [
+    256,
+    192
+   ],
+   "offset": 49920,
+   "size": 49152
+  },
+  {
+   "name": "block0.ln1.g",
+   "shape": [
+    192
+   ],
+   "offset": 246528,
+   "size": 192
+  },
+  {
+   "name": "block0.ln1.b",
+   "shape": [
+    192
+   ],
+   "offset": 247296,
+   "size": 192
+  },
+  {
+   "name": "block0.attn.qkv.w",
+   "shape": [
+    192,
+    576
+   ],
+   "offset": 248064,
+   "size": 110592
+  },
+  {
+   "name": "block0.attn.qkv.b",
+   "shape": [
+    576
+   ],
+   "offset": 690432,
+   "size": 576
+  },
+  {
+   "name": "block0.attn.proj.w",
+   "shape": [
+    192,
+    192
+   ],
+   "offset": 692736,
+   "size": 36864
+  },
+  {
+   "name": "block0.attn.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 840192,
+   "size": 192
+  },
+  {
+   "name": "block0.ln2.g",
+   "shape": [
+    192
+   ],
+   "offset": 840960,
+   "size": 192
+  },
+  {
+   "name": "block0.ln2.b",
+   "shape": [
+    192
+   ],
+   "offset": 841728,
+   "size": 192
+  },
+  {
+   "name": "block0.mlp.fc.w",
+   "shape": [
+    192,
+    768
+   ],
+   "offset": 842496,
+   "size": 147456
+  },
+  {
+   "name": "block0.mlp.fc.b",
+   "shape": [
+    768
+   ],
+   "offset": 1432320,
+   "size": 768
+  },
+  {
+   "name": "block0.mlp.proj.w",
+   "shape": [
+    768,
+    192
+   ],
+   "offset": 1435392,
+   "size": 147456
+  },
+  {
+   "name": "block0.mlp.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 2025216,
+   "size": 192
+  },
+  {
+   "name": "block1.ln1.g",
+   "shape": [
+    192
+   ],
+   "offset": 2025984,
+   "size": 192
+  },
+  {
+   "name": "block1.ln1.b",
+   "shape": [
+    192
+   ],
+   "offset": 2026752,
+   "size": 192
+  },
+  {
+   "name": "block1.attn.qkv.w",
+   "shape": [
+    192,
+    576
+   ],
+   "offset": 2027520,
+   "size": 110592
+  },
+  {
+   "name": "block1.attn.qkv.b",
+   "shape": [
+    576
+   ],
+   "offset": 2469888,
+   "size": 576
+  },
+  {
+   "name": "block1.attn.proj.w",
+   "shape": [
+    192,
+    192
+   ],
+   "offset": 2472192,
+   "size": 36864
+  },
+  {
+   "name": "block1.attn.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 2619648,
+   "size": 192
+  },
+  {
+   "name": "block1.ln2.g",
+   "shape": [
+    192
+   ],
+   "offset": 2620416,
+   "size": 192
+  },
+  {
+   "name": "block1.ln2.b",
+   "shape": [
+    192
+   ],
+   "offset": 2621184,
+   "size": 192
+  },
+  {
+   "name": "block1.mlp.fc.w",
+   "shape": [
+    192,
+    768
+   ],
+   "offset": 2621952,
+   "size": 147456
+  },
+  {
+   "name": "block1.mlp.fc.b",
+   "shape": [
+    768
+   ],
+   "offset": 3211776,
+   "size": 768
+  },
+  {
+   "name": "block1.mlp.proj.w",
+   "shape": [
+    768,
+    192
+   ],
+   "offset": 3214848,
+   "size": 147456
+  },
+  {
+   "name": "block1.mlp.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 3804672,
+   "size": 192
+  },
+  {
+   "name": "block2.ln1.g",
+   "shape": [
+    192
+   ],
+   "offset": 3805440,
+   "size": 192
+  },
+  {
+   "name": "block2.ln1.b",
+   "shape": [
+    192
+   ],
+   "offset": 3806208,
+   "size": 192
+  },
+  {
+   "name": "block2.attn.qkv.w",
+   "shape": [
+    192,
+    576
+   ],
+   "offset": 3806976,
+   "size": 110592
+  },
+  {
+   "name": "block2.attn.qkv.b",
+   "shape": [
+    576
+   ],
+   "offset": 4249344,
+   "size": 576
+  },
+  {
+   "name": "block2.attn.proj.w",
+   "shape": [
+    192,
+    192
+   ],
+   "offset": 4251648,
+   "size": 36864
+  },
+  {
+   "name": "block2.attn.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 4399104,
+   "size": 192
+  },
+  {
+   "name": "block2.ln2.g",
+   "shape": [
+    192
+   ],
+   "offset": 4399872,
+   "size": 192
+  },
+  {
+   "name": "block2.ln2.b",
+   "shape": [
+    192
+   ],
+   "offset": 4400640,
+   "size": 192
+  },
+  {
+   "name": "block2.mlp.fc.w",
+   "shape": [
+    192,
+    768
+   ],
+   "offset": 4401408,
+   "size": 147456
+  },
+  {
+   "name": "block2.mlp.fc.b",
+   "shape": [
+    768
+   ],
+   "offset": 4991232,
+   "size": 768
+  },
+  {
+   "name": "block2.mlp.proj.w",
+   "shape": [
+    768,
+    192
+   ],
+   "offset": 4994304,
+   "size": 147456
+  },
+  {
+   "name": "block2.mlp.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 5584128,
+   "size": 192
+  },
+  {
+   "name": "block3.ln1.g",
+   "shape": [
+    192
+   ],
+   "offset": 5584896,
+   "size": 192
+  },
+  {
+   "name": "block3.ln1.b",
+   "shape": [
+    192
+   ],
+   "offset": 5585664,
+   "size": 192
+  },
+  {
+   "name": "block3.attn.qkv.w",
+   "shape": [
+    192,
+    576
+   ],
+   "offset": 5586432,
+   "size": 110592
+  },
+  {
+   "name": "block3.attn.qkv.b",
+   "shape": [
+    576
+   ],
+   "offset": 6028800,
+   "size": 576
+  },
+  {
+   "name": "block3.attn.proj.w",
+   "shape": [
+    192,
+    192
+   ],
+   "offset": 6031104,
+   "size": 36864
+  },
+  {
+   "name": "block3.attn.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 6178560,
+   "size": 192
+  },
+  {
+   "name": "block3.ln2.g",
+   "shape": [
+    192
+   ],
+   "offset": 6179328,
+   "size": 192
+  },
+  {
+   "name": "block3.ln2.b",
+   "shape": [
+    192
+   ],
+   "offset": 6180096,
+   "size": 192
+  },
+  {
+   "name": "block3.mlp.fc.w",
+   "shape": [
+    192,
+    768
+   ],
+   "offset": 6180864,
+   "size": 147456
+  },
+  {
+   "name": "block3.mlp.fc.b",
+   "shape": [
+    768
+   ],
+   "offset": 6770688,
+   "size": 768
+  },
+  {
+   "name": "block3.mlp.proj.w",
+   "shape": [
+    768,
+    192
+   ],
+   "offset": 6773760,
+   "size": 147456
+  },
+  {
+   "name": "block3.mlp.proj.b",
+   "shape": [
+    192
+   ],
+   "offset": 7363584,
+   "size": 192
+  },
+  {
+   "name": "final_ln.g",
+   "shape": [
+    192
+   ],
+   "offset": 7364352,
+   "size": 192
+  },
+  {
+   "name": "final_ln.b",
+   "shape": [
+    192
+   ],
+   "offset": 7365120,
+   "size": 192
+  }
+ ]
+}

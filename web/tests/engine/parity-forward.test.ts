@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { forward, lossBackward } from '@/engine/gpt';
 import { Tape } from '@/engine/tape';
 import { CharTokenizer } from '@/engine/tokenizer';
-import { loadArtifacts, loadGolden, maxAbsDiff } from './helpers';
+import { loadArtifacts, loadGolden, maxAbsDiff, mixedTol } from './helpers';
 
-const TOL = 1e-4;
+const ATOL = 1e-4;
 
 describe.each(['t4', 't64'] as const)('forward parity (%s)', (name) => {
   const { cfg, weights, chars } = loadArtifacts();
@@ -32,6 +32,6 @@ describe.each(['t4', 't64'] as const)('forward parity (%s)', (name) => {
     const g = golden.tensors.get(tensorName)!;
     expect(node!.data, `node ${tensorName} has no data`).not.toBeNull();
     expect(node!.shape).toEqual(g.shape);
-    expect(maxAbsDiff(node!.data!, g.data)).toBeLessThan(TOL);
+    expect(maxAbsDiff(node!.data!, g.data)).toBeLessThan(mixedTol(g.data, ATOL));
   });
 });

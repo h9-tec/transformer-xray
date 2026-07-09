@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { forward, lossBackward } from '@/engine/gpt';
 import { Tape } from '@/engine/tape';
 import { CharTokenizer } from '@/engine/tokenizer';
-import { loadArtifacts, loadGolden, maxAbsDiff } from './helpers';
+import { loadArtifacts, loadGolden, maxAbsDiff, mixedTol } from './helpers';
 
-const TOL = 5e-4;
+const ATOL = 5e-4;
 
 // PyTorch retains grads for tensors our fused/closed-form backward never
 // materializes; they carry no parity information of their own.
@@ -33,7 +33,7 @@ describe.each(['t4', 't64'] as const)('backward parity (%s)', (name) => {
     expect(node, `no trace node for golden grad ${tensorName}`).toBeDefined();
     const g = golden.tensors.get(tensorName)!;
     expect(node!.shape).toEqual(g.shape);
-    expect(maxAbsDiff(node!.data!, g.data)).toBeLessThan(TOL);
+    expect(maxAbsDiff(node!.data!, g.data)).toBeLessThan(mixedTol(g.data, ATOL));
   });
 
   const paramGradNames = golden.meta.tensors
@@ -46,7 +46,7 @@ describe.each(['t4', 't64'] as const)('backward parity (%s)', (name) => {
       const got = res.grads.get(paramName);
       expect(got, `no computed grad for param ${paramName}`).toBeDefined();
       const g = golden.tensors.get(tensorName)!;
-      expect(maxAbsDiff(got!, g.data)).toBeLessThan(TOL);
+      expect(maxAbsDiff(got!, g.data)).toBeLessThan(mixedTol(g.data, ATOL));
     });
   }
 });
