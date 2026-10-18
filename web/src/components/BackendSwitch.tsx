@@ -7,7 +7,7 @@
 import { useTranslations } from 'next-intl';
 import { useModelStore } from '@/stores/modelStore';
 
-export function BackendSwitch({ lastMs }: { lastMs?: number | null }) {
+export function BackendSwitch({ lastMs, busy = false }: { lastMs?: number | null; busy?: boolean }) {
   const t = useTranslations('backend');
   const { backend, backendInfo, gpuAvailable, setBackend } = useModelStore();
   const gpuDisabled = gpuAvailable === false;
@@ -19,15 +19,16 @@ export function BackendSwitch({ lastMs }: { lastMs?: number | null }) {
           <button
             type="button"
             aria-pressed={backend === 'cpu'}
+            disabled={busy}
             onClick={() => void setBackend('cpu')}
-            className={`px-3.5 py-1 text-[13px] ${backend === 'cpu' ? 'bg-accent font-medium text-bg' : 'text-muted hover:text-ink'}`}
+            className={`px-3.5 py-1 text-[13px] disabled:opacity-60 ${backend === 'cpu' ? 'bg-accent font-medium text-bg' : 'text-muted hover:text-ink'}`}
           >
             CPU
           </button>
           <button
             type="button"
             aria-pressed={backend === 'gpu'}
-            disabled={gpuDisabled}
+            disabled={gpuDisabled || busy}
             onClick={() => void setBackend('gpu')}
             title={gpuDisabled ? (backendInfo.reason ?? '') : undefined}
             className={`px-3.5 py-1 text-[13px] disabled:cursor-not-allowed disabled:opacity-40 ${

@@ -20,6 +20,7 @@ export function PlaygroundView() {
   const selected = usePlaygroundStore((s) => s.selectedStep);
   const greedy = usePlaygroundStore((s) => s.greedy);
   const lastMs = usePlaygroundStore((s) => s.lastMs);
+  const generating = usePlaygroundStore((s) => s.generating);
 
   useEffect(() => {
     void load();
@@ -50,7 +51,7 @@ export function PlaygroundView() {
         <aside className="space-y-5">
           <PromptInput chars={chars} />
           <SamplingControls />
-          <BackendSwitch lastMs={lastMs} />
+          <BackendSwitch lastMs={lastMs} busy={generating} />
           <p className="nums text-xs text-faint">
             {cfgJson.n_params.toLocaleString()} params · val loss {cfgJson.val_loss.toFixed(3)} ·
             100% live in your browser

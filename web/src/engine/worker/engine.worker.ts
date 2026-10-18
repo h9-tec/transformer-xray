@@ -5,7 +5,7 @@
 
 import { adamwInit, type AdamWState } from '../adamw';
 import { backendAfterLoss, chooseBackend, type BackendName, type BackendStatus } from '../backend';
-import { getGpu, resetGpu, type Gpu } from '../gpu/device';
+import { getGpu, gpuUnavailableReason, resetGpu, type Gpu } from '../gpu/device';
 import { gpuGenerate } from '../gpu/forward';
 import { uploadModel, type GpuModel } from '../gpu/model';
 import { GpuTrainer } from '../gpu/train';
@@ -44,25 +44,51 @@ async function liveWeights(): Promise<Weights> {
 }
 let backend: BackendStatus = { active: 'cpu' };
 
+const HP = { lr: 1e-3, beta1: 0.9, beta2: 0.95, eps: 1e-8, weightDecay: 0.1 };
+
+/** The GPU is gone: drop every GPU object and continue on the CPU with
+ * whatever weights the CPU copy holds (GPU training progress since the last
+ * sync is lost, and the reason says so). */
+function onGpuLost(info: string): void {
+  const hadTrainer = gpuTrainer !== null;
+  gpu = null;
+  gpuModel = null;
+  gpuTrainer = null;
+  resetGpu();
+  backend = backendAfterLoss(info + (hadTrainer ? '; training progress on the GPU was lost' : ''));
+  post({ id: 0, type: 'backend', ...backend });
+}
+
+/** Weight residency is explicit: the engine that is about to run always
+ * gets the live weights. GPU → CPU downloads; CPU → GPU re-uploads. A
+ * training session continues on the new engine (optimizer moments restart). */
 async function handleSetBackend(id: number, requested: BackendName): Promise<void> {
   if (!cfg) throw new Error('worker not initialized');
   if (requested === 'gpu' && !gpu) {
     const g = await getGpu();
     if (g) {
       gpu = g;
-      void g.lost.then((info) => {
-        gpu = null;
-        gpuModel = null;
-        resetGpu();
-        backend = backendAfterLoss(info.message || info.reason || 'unknown');
-        post({ id: 0, type: 'backend', ...backend });
-      });
+      void g.lost.then((info) => onGpuLost(info.message || info.reason || 'unknown'));
     }
   }
-  backend = chooseBackend(requested, gpu ? { ok: true, adapter: gpu.adapterInfo } : { ok: false, reason: 'navigator.gpu is missing or no adapter was granted' });
-  // the GPU copy stays resident across CPU/GPU switches; it is rebuilt on
-  // training resets and dropped only when the device is lost
-  if (backend.active === 'gpu' && gpu && !gpuModel) gpuModel = uploadModel(gpu, active(), cfg);
+  const next = chooseBackend(requested, gpu ? { ok: true, adapter: gpu.adapterInfo } : { ok: false, reason: gpuUnavailableReason });
+  if (next.active === 'cpu' && backend.active === 'gpu') {
+    if (gpuTrainer) {
+      trainParams = await gpuTrainer.download();
+      adamState = adamwInit();
+      gpuTrainer.destroy();
+      gpuTrainer = null;
+    }
+    gpuModel?.destroy();
+    gpuModel = null;
+  }
+  if (next.active === 'gpu' && gpu) {
+    gpuModel?.destroy();
+    gpuModel = uploadModel(gpu, active(), cfg);
+    gpuTrainer?.destroy();
+    gpuTrainer = trainParams ? new GpuTrainer(gpu, gpuModel, cfg, { ...HP }) : null;
+  }
+  backend = next;
   post({ id, type: 'backend', ...backend });
 }
 
@@ -88,20 +114,26 @@ async function handleGenerate(id: number, p: WorkerRequest & { type: 'generate' 
   const { prompt, maxNewTokens, temperature, topK, seed } = p.params;
   let index = 0;
   if (backend.active === 'gpu' && gpu && gpuModel) {
-    const outGpu = await gpuGenerate(
-      gpu,
-      gpuModel,
-      cfg,
-      tokenizer.encode(prompt),
-      maxNewTokens,
-      { temperature, topK, rng: seed === null ? null : mulberry32(seed) },
-      ({ token, logits, ms }) => {
-        const buf = logits.buffer as ArrayBuffer;
-        post({ id, type: 'token', index: index++, token, logits: buf, ms }, [buf]);
-      },
-    );
-    post({ id, type: 'generated', text: tokenizer.decode(outGpu) });
-    return;
+    try {
+      const outGpu = await gpuGenerate(
+        gpu,
+        gpuModel,
+        cfg,
+        tokenizer.encode(prompt),
+        maxNewTokens,
+        { temperature, topK, rng: seed === null ? null : mulberry32(seed) },
+        ({ token, logits, ms }) => {
+          const buf = logits.buffer as ArrayBuffer;
+          post({ id, type: 'token', index: index++, token, logits: buf, ms }, [buf]);
+        },
+      );
+      post({ id, type: 'generated', text: tokenizer.decode(outGpu) });
+      return;
+    } catch (e) {
+      // the device went away mid-run: finish on the CPU and say so
+      onGpuLost(e instanceof Error ? e.message : String(e));
+      index = 0;
+    }
   }
   const out = generateKV(
     active(),
@@ -192,7 +224,7 @@ function handleTrainInit(
   if (backend.active === 'gpu' && gpu) {
     gpuModel?.destroy();
     gpuModel = uploadModel(gpu, trainParams, cfg);
-    gpuTrainer = new GpuTrainer(gpu, gpuModel, cfg, { lr: 1e-3, beta1: 0.9, beta2: 0.95, eps: 1e-8, weightDecay: 0.1 });
+    gpuTrainer = new GpuTrainer(gpu, gpuModel, cfg, { ...HP });
   }
   post({ id, type: 'trainReady', fromScratch });
 }
@@ -214,7 +246,7 @@ async function handleTrainRun(id: number, p: TrainParams): Promise<void> {
     const y = corpusIds.subarray(start + 1, start + T + 1);
     let loss: number;
     let stepMs: number | undefined;
-    if (gpuTrainer && gpu && gpuModel) {
+    if (backend.active === 'gpu' && gpuTrainer && gpu && gpuModel) {
       gpuTrainer.hp.lr = p.lr;
       const r = await gpuTrainer.step(x, y);
       loss = r.loss;
@@ -228,28 +260,37 @@ async function handleTrainRun(id: number, p: TrainParams): Promise<void> {
     if (p.sampleEvery > 0 && trainStepCount % p.sampleEvery === 0) {
       const sampleOpts = { temperature: 0.8, topK: 40, rng: mulberry32(trainStepCount) };
       const out =
-        gpuTrainer && gpu && gpuModel
+        backend.active === 'gpu' && gpuTrainer && gpu && gpuModel
           ? await gpuGenerate(gpu, gpuModel, cfg, tokenizer.encode('\n'), 80, sampleOpts)
           : generateKV(trainParams, cfg, tokenizer.encode('\n'), 80, sampleOpts);
       sample = tokenizer.decode(out);
     }
     post({ id, type: 'trainProgress', step: trainStepCount, loss, sample, ms: stepMs });
-    // Yield to the event loop so trainStop can interleave.
+    // Yield to the event loop so trainStop can interleave, then serve the
+    // requests that arrived during this step (x-ray, backend switch, generate).
     await new Promise((r) => setTimeout(r, 0));
+    while (deferred.length) await handle(deferred.shift()!);
   }
   training = false;
   post({ id, type: 'trainDone', step: trainStepCount });
+  while (deferred.length) await handle(deferred.shift()!);
 }
 
 // Handlers are async (the GPU path awaits readbacks), so requests are run
 // one at a time: a backend switch can never land in the middle of a
 // generation that is still using the GPU buffers.
 let chain: Promise<void> = Promise.resolve();
+/** Requests that arrived while a training run holds the chain; served between steps. */
+const deferred: WorkerRequest[] = [];
 
 self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const msg = e.data;
   if (msg.type === 'trainStop') {
     stopRequested = true; // must not queue behind the running training loop
+    return;
+  }
+  if (training && (msg.type === 'trace' || msg.type === 'setBackend' || msg.type === 'generate')) {
+    deferred.push(msg);
     return;
   }
   chain = chain.then(() => handle(msg)).catch(() => undefined);

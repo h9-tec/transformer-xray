@@ -58,11 +58,19 @@ export const useModelStore = create<ModelState>((set, get) => ({
       const workerCopy = main.rawBuffer.slice(0);
       const { cfgJson, chars } = await engine().init(main.cfgJson, main.tokenizer.chars, workerCopy);
       engine().onBackendChange = (info) => set({ backend: info.active, backendInfo: info });
-      // probe once so the switch can say whether "your GPU" exists; stay on the CPU
-      const probe = await engine().setBackend('gpu');
-      const gpuAvailable = probe.active === 'gpu';
-      const back = await engine().setBackend('cpu');
-      set({ status: 'ready', cfgJson, chars, gpuAvailable, backendInfo: gpuAvailable ? back : { active: 'cpu', reason: probe.reason } });
+      // probe once so the switch can say whether "your GPU" exists; stay on the CPU.
+      // A failing probe must never take the CPU engine down with it.
+      let gpuAvailable = false;
+      let backendInfo: BackendStatus = { active: 'cpu' };
+      try {
+        const probe = await engine().setBackend('gpu');
+        gpuAvailable = probe.active === 'gpu';
+        const back = await engine().setBackend('cpu');
+        backendInfo = gpuAvailable ? back : { active: 'cpu', reason: probe.reason };
+      } catch (e) {
+        backendInfo = { active: 'cpu', reason: e instanceof Error ? e.message : String(e) };
+      }
+      set({ status: 'ready', cfgJson, chars, gpuAvailable, backendInfo });
     } catch (e) {
       set({ status: 'error', error: e instanceof Error ? e.message : String(e) });
     }

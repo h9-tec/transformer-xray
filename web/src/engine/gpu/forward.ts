@@ -16,18 +16,19 @@ export interface GpuForwardResult {
   ms: number;
 }
 
-/** Scratch buffers sized for the largest T seen, reused across calls. */
+/** Scratch buffers keyed by name and grown only when a larger size is
+ * asked for, so generating 200 tokens (T = 1..256) allocates each buffer
+ * once, not once per T. */
 class Scratch {
   private pool = new Map<string, Buf>();
   constructor(private gpu: Gpu) {}
   get(name: string, floats: number): Buf {
-    const key = `${name}:${floats}`;
-    let b = this.pool.get(key);
-    if (!b) {
-      b = Buf.zeros(this.gpu, floats, name);
-      this.pool.set(key, b);
-    }
-    return b;
+    const b = this.pool.get(name);
+    if (b && b.floats >= floats) return b;
+    b?.destroy();
+    const nb = Buf.zeros(this.gpu, floats, name);
+    this.pool.set(name, nb);
+    return nb;
   }
   destroy(): void {
     for (const b of this.pool.values()) b.destroy();
@@ -48,30 +49,33 @@ export async function gpuForward(gpu: Gpu, model: GpuModel, cfg: Config, ids: In
   const T = ids.length;
   if (T > cfg.blockSize) throw new Error(`sequence length ${T} > block size ${cfg.blockSize}`);
   const S = scratch(gpu);
-  const idsBuf = Buf.from(gpu, ids, 'ids');
+  // allocate every scratch buffer at full block size once; kernels only touch the first T rows
+  const C = cfg.blockSize;
+  const idsBuf = S.get('ids', C);
+  idsBuf.write(ids);
   const enc = gpu.device.createCommandEncoder();
 
   // embeddings: x = wte[ids] + wpe[:T]
-  let x = S.get('x', T * d);
+  let x = S.get('x', C * d);
   g.embed(gpu, enc, model.get('wte'), idsBuf, model.get('wpe'), x, T, d);
 
-  const ln = S.get('ln', T * d);
-  const mean = S.get('mean', T);
-  const rstd = S.get('rstd', T);
-  const qkv = S.get('qkv', T * 3 * d);
-  const q = S.get('q', H * T * hd);
-  const k = S.get('k', H * T * hd);
-  const v = S.get('v', H * T * hd);
-  const scores = S.get('scores', H * T * T);
-  const probs = S.get('probs', H * T * T);
-  const wv = S.get('wv', H * T * hd);
-  const merged = S.get('merged', T * d);
-  const proj = S.get('proj', T * d);
-  const res1 = S.get('res1', T * d);
-  const fc = S.get('fc', T * 4 * d);
-  const act = S.get('act', T * 4 * d);
-  const mlp = S.get('mlp', T * d);
-  const res2 = S.get('res2', T * d);
+  const ln = S.get('ln', C * d);
+  const mean = S.get('mean', C);
+  const rstd = S.get('rstd', C);
+  const qkv = S.get('qkv', C * 3 * d);
+  const q = S.get('q', H * C * hd);
+  const k = S.get('k', H * C * hd);
+  const v = S.get('v', H * C * hd);
+  const scores = S.get('scores', H * C * C);
+  const probs = S.get('probs', H * C * C);
+  const wv = S.get('wv', H * C * hd);
+  const merged = S.get('merged', C * d);
+  const proj = S.get('proj', C * d);
+  const res1 = S.get('res1', C * d);
+  const fc = S.get('fc', C * 4 * d);
+  const act = S.get('act', C * 4 * d);
+  const mlp = S.get('mlp', C * d);
+  const res2 = S.get('res2', C * d);
   const scale = 1 / Math.sqrt(hd);
 
   for (let b = 0; b < nLayer; b++) {
@@ -100,12 +104,11 @@ export async function gpuForward(gpu: Gpu, model: GpuModel, cfg: Config, ids: In
   }
 
   g.layernorm(gpu, enc, x, model.get('final_ln.g'), model.get('final_ln.b'), ln, mean, rstd, T, d, lnEps);
-  const logits = S.get('logits', T * V);
+  const logits = S.get('logits', C * V);
   // weight tying: logits = ln · wteᵀ, wte is [V, d]
   g.matmul(gpu, enc, ln, model.get('wte'), logits, T, d, V, { transB: true });
   await submitAndWait(gpu, enc);
   const out = await logits.read();
-  idsBuf.destroy();
   return { logits: out.subarray(0, T * V), ms: performance.now() - t0 };
 }
 

@@ -14,19 +14,42 @@ export interface Gpu {
 }
 
 let cached: Promise<Gpu | null> | null = null;
+/** Why the last getGpu() returned null, for the UI. */
+export let gpuUnavailableReason = 'navigator.gpu is missing or no adapter was granted';
 
 export function getGpu(): Promise<Gpu | null> {
   cached ??= (async () => {
+    try {
+      const g = await openGpu();
+      if (!g) cached = null; // retry next time (the user may enable a flag and reload a worker)
+      return g;
+    } catch (e) {
+      cached = null;
+      gpuUnavailableReason = `the browser refused a WebGPU device: ${e instanceof Error ? e.message : String(e)}`;
+      return null;
+    }
+  })();
+  return cached;
+}
+
+async function openGpu(): Promise<Gpu | null> {
+  {
     const nav = (globalThis as { navigator?: Navigator }).navigator;
     const gpuApi = (nav as Navigator & { gpu?: GPU } | undefined)?.gpu;
-    if (!gpuApi) return null;
+    if (!gpuApi) {
+      gpuUnavailableReason = 'this browser has no WebGPU (navigator.gpu is missing)';
+      return null;
+    }
     let adapter: GPUAdapter | null = null;
     try {
       adapter = await gpuApi.requestAdapter({ powerPreference: 'high-performance' });
     } catch {
       adapter = null;
     }
-    if (!adapter) return null;
+    if (!adapter) {
+      gpuUnavailableReason = 'no WebGPU adapter was granted (on Linux Chrome, enable chrome://flags/#enable-unsafe-webgpu)';
+      return null;
+    }
     const hasTimestamps = adapter.features.has('timestamp-query');
     const device = await adapter.requestDevice({
       requiredFeatures: hasTimestamps ? ['timestamp-query'] : [],
@@ -38,8 +61,7 @@ export function getGpu(): Promise<Gpu | null> {
     const info = (adapter as GPUAdapter & { info?: { vendor?: string; architecture?: string; device?: string; description?: string } }).info;
     const adapterInfo = info ? [info.vendor, info.architecture, info.device, info.description].filter(Boolean).join(' ') || 'WebGPU adapter' : 'WebGPU adapter';
     return { device, adapterInfo, hasTimestamps, lost: device.lost, pipelines: new Map() };
-  })();
-  return cached;
+  }
 }
 
 /** Forget the cached device (after a loss) so the next call retries. */
@@ -47,14 +69,19 @@ export function resetGpu(): void {
   cached = null;
 }
 
-const STORAGE = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST;
+// WebGPU usage flags as numbers: the GPUBufferUsage/GPUMapMode globals do not
+// exist in browsers without WebGPU, and this module is imported by the engine
+// worker everywhere, so nothing here may touch them at load time.
+const USAGE = { MAP_READ: 0x0001, COPY_SRC: 0x0004, COPY_DST: 0x0008, UNIFORM: 0x0040, STORAGE: 0x0080 } as const;
+const MAP_MODE_READ = 0x0001;
+const STORAGE = USAGE.STORAGE | USAGE.COPY_SRC | USAGE.COPY_DST;
 
 export class Buf {
   readonly buffer: GPUBuffer;
   constructor(
     readonly gpu: Gpu,
     readonly byteLength: number,
-    usage: GPUBufferUsageFlags = STORAGE,
+    usage: number = STORAGE,
     label?: string,
   ) {
     this.buffer = gpu.device.createBuffer({ size: Math.max(4, Math.ceil(byteLength / 4) * 4), usage, label });
@@ -75,11 +102,11 @@ export class Buf {
   }
   async read(): Promise<Float32Array> {
     const dev = this.gpu.device;
-    const staging = dev.createBuffer({ size: this.buffer.size, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+    const staging = dev.createBuffer({ size: this.buffer.size, usage: USAGE.MAP_READ | USAGE.COPY_DST });
     const enc = dev.createCommandEncoder();
     enc.copyBufferToBuffer(this.buffer, 0, staging, 0, this.buffer.size);
     dev.queue.submit([enc.finish()]);
-    await staging.mapAsync(GPUMapMode.READ);
+    await staging.mapAsync(MAP_MODE_READ);
     const out = new Float32Array(staging.getMappedRange().slice(0, this.byteLength));
     staging.unmap();
     staging.destroy();
@@ -105,7 +132,7 @@ export function uniform(gpu: Gpu, words: (number | { f: number })[]): GPUBuffer 
     if (typeof w === 'number') u[i] = w >>> 0;
     else f[i] = w.f;
   });
-  const b = gpu.device.createBuffer({ size: u.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+  const b = gpu.device.createBuffer({ size: u.byteLength, usage: USAGE.UNIFORM | USAGE.COPY_DST });
   gpu.device.queue.writeBuffer(b, 0, u);
   pendingUniforms.push(b);
   return b;

@@ -49,7 +49,7 @@ export class GpuTrainer {
 
   private alloc(T: number): Acts {
     if (this.acts && this.acts.T === T) return this.acts;
-    this.acts?.ids.destroy();
+    if (this.acts) this.freeActs(this.acts);
     const { nLayer, nEmbd: d, nHead: H, headDim: hd, vocabSize: V } = this.cfg;
     const z = (n: number, label: string) => Buf.zeros(this.gpu, n, label);
     const blocks = Array.from({ length: nLayer }, (_, b) => ({
@@ -202,11 +202,19 @@ export class GpuTrainer {
     dispatch(this.gpu, enc, 'bias_grad', [dy.buffer, db.buffer], uniform(this.gpu, [T, N]), [wg(N, 64), 1, 1]);
   }
 
+  private freeActs(a: Acts): void {
+    const all: Buf[] = [a.ids, a.targets, a.x0, a.lnf, a.mf, a.rf, a.logits, a.perToken, a.dLogits, a.dX, a.dX2, a.dRes1, a.dAct, a.dFc, a.dLn, a.dMerged, a.dWv, a.dAtt, a.dRaw, a.dQ, a.dK, a.dV, a.dQkv];
+    for (const b of a.blocks) all.push(...Object.values(b));
+    for (const b of all) b.destroy();
+  }
+
   download(): Promise<Weights> {
     return this.model.download();
   }
 
   destroy(): void {
+    if (this.acts) this.freeActs(this.acts);
+    this.acts = null;
     for (const b of this.grads.values()) b.destroy();
     for (const b of this.m.values()) b.destroy();
     for (const b of this.v.values()) b.destroy();
