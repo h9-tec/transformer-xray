@@ -5,6 +5,8 @@ import { HowItWorks } from '@/components/landing/HowItWorks';
 import { Labs } from '@/components/landing/Labs';
 import { WarpInstrument } from '@/components/landing/WarpInstrument';
 import { LessonMap } from '@/components/learn/LessonMap';
+import { Shell } from '@/components/Shell';
+import { StoreBridge } from '@/components/StoreBridge';
 import { Link } from '@/i18n/navigation';
 
 export default function Home({ params }: { params: Promise<{ locale: string }> }) {
@@ -13,6 +15,8 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
   const t = useTranslations('home');
 
   return (
+    <Shell>
+      <StoreBridge />
     <main className="relative">
       {/* hero */}
       <section className="relative overflow-hidden pt-8 pb-10 sm:pt-16">
@@ -78,5 +82,6 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
         <span className="nums">{t('footer2')}</span>
       </footer>
     </main>
+    </Shell>
   );
 }

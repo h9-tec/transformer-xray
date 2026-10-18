@@ -30,3 +30,10 @@ test.describe('reduced motion', () => {
     await expect(page.getByTestId('sectors')).toHaveText('4');
   });
 });
+
+test('landing carries the primary navigation and a side gutter', async ({ page }) => {
+  await page.goto('en/');
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+  const left = await page.getByRole('heading', { level: 1 }).evaluate((el) => el.getBoundingClientRect().left);
+  expect(left).toBeGreaterThanOrEqual(16);
+});

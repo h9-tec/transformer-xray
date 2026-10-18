@@ -48,7 +48,9 @@ body {
   line-height: 1.9; /* Arabic needs more breathing room than Latin */
 }
 
-/* ─── Identity utilities (the only places glow is allowed) ─── */
+/* ─── Identity utilities (the only places glow is allowed) ───
+   In the components layer so Tailwind utilities (hidden, !px-4) still win. */
+@layer components {
 
 .glow-accent {
   box-shadow: 0 0 24px rgba(255, 154, 77, 0.35);
@@ -93,6 +95,8 @@ body {
 .btn-ghost:hover {
   transform: translateY(-1px);
 }
+}
+
 :focus-visible {
   outline: 2px solid var(--color-fwd);
   outline-offset: 3px;
