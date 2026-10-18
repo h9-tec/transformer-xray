@@ -45,8 +45,13 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # Build and test under the GitHub Pages prefix: the layout that ships.
       - run: pnpm build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /transformer-xray
       - run: pnpm exec playwright test
+        env:
+          BASE_PATH: /transformer-xray
 
   model:
     runs-on: ubuntu-latest

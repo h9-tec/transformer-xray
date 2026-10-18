@@ -2,6 +2,8 @@
 
 **LLM math + CUDA, live in your browser — for juniors and seniors.**
 
+**Live:** https://h9-tec.github.io/transformer-xray/
+
 A real 1.8M-parameter GPT (GPT-2 architecture, char-level Tiny Shakespeare)
 runs its forward pass, its backward pass, and AdamW steps **inside your
 browser**, hand-written in TypeScript. Every tensor, gradient, attention
@@ -45,6 +47,15 @@ npx pnpm dev        # http://localhost:3000
 
 # 3. CUDA kernels (optional, needs nvcc)
 make bench
+```
+
+Deploy: push to `main`. `.github/workflows/deploy.yml` builds with
+`NEXT_PUBLIC_BASE_PATH=/transformer-xray` and publishes to GitHub Pages.
+To test the Pages layout locally:
+
+```bash
+cd web && NEXT_PUBLIC_BASE_PATH=/transformer-xray npx pnpm build
+BASE_PATH=/transformer-xray npx pnpm exec playwright test
 ```
 
 ## What's inside
