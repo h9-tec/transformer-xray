@@ -6,6 +6,8 @@ declare global {
       trace: { getState(): { status: string; loss: number | null } };
       learn: { getState(): { markPassed(slug: string): void; passed: string[] } };
     };
+    __cm?: Record<string, { setText(text: string): void; getText(): string }>;
+    __exercise?: { slug: string; starter: string; solution: string };
   }
 }
 export {};

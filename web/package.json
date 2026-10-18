@@ -11,9 +11,15 @@
     "build:worker": "node scripts/build-worker.mjs"
   },
   "dependencies": {
+    "@codemirror/lang-cpp": "^6.0.3",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@lezer/highlight": "^1.2.5",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
     "@next/mdx": "^16.2.10",
+    "codemirror": "^6.0.2",
     "katex": "^0.17.0",
     "next": "16.2.10",
     "next-intl": "^4.13.1",

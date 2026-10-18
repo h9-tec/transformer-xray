@@ -9,6 +9,7 @@ import { readKernel } from '@/lib/kernels';
 import { DOCS } from '@/content/en/learn';
 import { LESSONS, type Lesson } from '@/learn/lessons';
 import { LessonRail } from './LessonRail';
+import { RunPanel } from './RunPanel';
 
 function Slot({ title, body, tag }: { title: string; body: string; tag: string }) {
   return (
@@ -65,11 +66,13 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
         )}
 
         <Slot title={t('simulator')} tag="simulator" body={t('slotSimulator')} />
-        <Slot
-          title={t('exercise')}
-          tag="exercise"
-          body={kernel ? t('slotExerciseKernel') : t('slotExercise')}
-        />
+        <section className="mb-10" data-testid="exercise">
+          <h2 className="m-0 mb-3 flex items-center gap-3 font-display text-[26px] font-bold tracking-tight">
+            {t('exercise')}
+            <span className="nums rounded-md border border-line bg-raised px-2 py-1 text-xs font-medium text-muted">exercise</span>
+          </h2>
+          <RunPanel slug={lesson.slug} />
+        </section>
 
         {kernel && (
           <section className="mb-10" data-testid="kernel-source">

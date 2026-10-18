@@ -134,6 +134,20 @@
     "slotSimulator": "Opens with the next release: a simulator built from this lesson's kernel, with sliders for block size and shape.",
     "slotExercise": "Opens with the next release: you write the kernel in the editor and the in-browser GPU checks it.",
     "slotExerciseKernel": "Opens with the next release: you write this kernel in the editor and the in-browser GPU checks it against the real one shown below.",
-    "slotQuiz": "Opens with the next release: three questions, graded on the spot."
+    "slotQuiz": "Opens with the next release: three questions, graded on the spot.",
+    "run": "Run on the GPU",
+    "running": "Running your kernel warp by warp…",
+    "cancel": "Stop",
+    "reset": "Reset to starter",
+    "showSolution": "Show solution",
+    "hideSolution": "Back to my code",
+    "passed": "All targets met. Lesson passed.",
+    "firstMismatch": "First mismatch",
+    "errorAt": "Stopped at line {line}",
+    "hint": "Hint",
+    "sectorsPerReq": "sectors per request",
+    "bankWorst": "worst bank conflict",
+    "divergent": "divergent instructions",
+    "racesN": "data races"
   }
 }
