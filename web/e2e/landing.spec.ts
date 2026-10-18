@@ -15,12 +15,30 @@ test('warp instrument recomputes sectors per access pattern', async ({ page }) =
   await expect(sectors).toHaveText('32');
 });
 
-test('landing has no horizontal scroll at phone width', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+for (const path of ['en/', 'en/learn/', 'en/learn/tiled-matmul/', 'en/playground/', 'ar/']) {
+  test(`no horizontal scroll at 360px on ${path}`, async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.goto(path);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+  });
+}
+
+test('warp instrument draws exactly as many sector cells as it reports', async ({ page }) => {
   await page.goto('en/');
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-  ).toBe(true);
+  await page.getByRole('button', { name: /column/ }).click();
+  await expect(page.getByTestId('sectors')).toHaveText('32');
+  await expect(page.getByTestId('warp-canvas')).toHaveAttribute('data-cells', '32');
+  await page.getByRole('button', { name: /scattered/ }).click();
+  const n = await page.getByTestId('sectors').textContent();
+  await expect(page.getByTestId('warp-canvas')).toHaveAttribute('data-cells', n ?? '');
+});
+
+test('landing says plainly what opens with the next release', async ({ page }) => {
+  await page.goto('en/');
+  await expect(page.getByText(/opens? with the next release/i).first()).toBeVisible();
 });
 
 test.describe('reduced motion', () => {

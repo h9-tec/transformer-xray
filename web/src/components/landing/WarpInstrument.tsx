@@ -10,7 +10,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { laneAddresses, sectorsTouched, type AccessPattern } from '@/lib/memory';
 
 const PATTERNS: AccessPattern[] = ['row', 'col', 'scatter'];
-const RANGE_FLOATS = 480; // the memory strip shows 480 floats = 60 sectors
 
 export function WarpInstrument() {
   const t = useTranslations('home');
@@ -25,13 +24,20 @@ export function WarpInstrument() {
   const labelLanes = t('canvasLanes');
   const labelMem = t('canvasMem');
 
+  // The strip draws exactly the sectors this load touches, one cell per
+  // distinct 32-byte sector in address order, 8 float slots each. Lanes land
+  // in their own sector's slot, so the picture and the readout are the same
+  // computation: row = 4 full cells, column = 32 cells with one float used.
+  const cells = useMemo(() => [...new Set(addrs.map((a) => Math.floor(a / 32)))].sort((x, y) => x - y), [addrs]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const sectorSet = new Set(addrs.map((a) => Math.floor(a / 32)));
+    const cellIndex = new Map(cells.map((sec, i) => [sec, i]));
+    const bodyFont = getComputedStyle(document.body).fontFamily || 'sans-serif';
     let frame = 0;
     let raf = 0;
 
@@ -40,30 +46,37 @@ export function WarpInstrument() {
       const W = canvas.width;
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
-      const cols = 60;
-      const cw = (W - 40) / cols;
+      const n = cells.length;
+      const gap = 4;
+      const cw = Math.min(140, (W - 40 - gap * (n - 1)) / n);
+      const stripW = n * cw + gap * (n - 1);
+      const x0 = 20 + (W - 40 - stripW) / 2;
       const my = H - 70;
-      for (let s = 0; s < cols; s++) {
-        const hot = sectorSet.has(s);
-        ctx.fillStyle = hot ? 'rgba(116,199,255,.22)' : 'rgba(255,255,255,.035)';
-        ctx.fillRect(20 + s * cw, my, cw - 2, 40);
-        if (hot) {
-          ctx.strokeStyle = 'rgba(116,199,255,.8)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(20 + s * cw + 0.5, my + 0.5, cw - 3, 39);
-        }
+      const slotW = (cw - 2) / 8;
+      // sector cells with 8 float slots each
+      for (let i = 0; i < n; i++) {
+        const x = x0 + i * (cw + gap);
+        ctx.fillStyle = 'rgba(116,199,255,.16)';
+        ctx.fillRect(x, my, cw, 40);
+        ctx.strokeStyle = 'rgba(116,199,255,.75)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, my + 0.5, cw - 1, 39);
+        ctx.fillStyle = 'rgba(116,199,255,.12)';
+        for (let k = 1; k < 8; k++) ctx.fillRect(x + 1 + k * slotW, my + 1, 1, 38);
       }
       const ly = 40;
       const laneX = (l: number) => 20 + (l + 0.5) * ((W - 40) / 32);
       const phase = reduce ? 1 : (Math.sin(frame / 40) + 1) / 2;
       for (let l = 0; l < 32; l++) {
         const x = laneX(l);
-        const a = (addrs[l] / 4) % RANGE_FLOATS;
-        const tx = 20 + (a / RANGE_FLOATS) * (W - 40);
+        const sec = Math.floor(addrs[l] / 32);
+        const slot = Math.floor((addrs[l] % 32) / 4);
+        const i = cellIndex.get(sec) ?? 0;
+        const tx = x0 + i * (cw + gap) + 1 + (slot + 0.5) * slotW;
         const ty = my + 20;
         const px = x + (tx - x) * phase;
         const py = ly + (ty - ly) * phase;
-        ctx.strokeStyle = 'rgba(255,154,77,.25)';
+        ctx.strokeStyle = 'rgba(255,154,77,.22)';
         ctx.beginPath();
         ctx.moveTo(x, ly);
         ctx.lineTo(tx, ty);
@@ -81,7 +94,7 @@ export function WarpInstrument() {
         ctx.fill();
       }
       ctx.fillStyle = 'rgba(154,165,191,.9)';
-      ctx.font = '12px Instrument Sans, sans-serif';
+      ctx.font = `12px ${bodyFont}`;
       ctx.fillText(labelLanes, 20, 22);
       ctx.fillText(labelMem, 20, H - 14);
       frame++;
@@ -89,13 +102,14 @@ export function WarpInstrument() {
     }
     draw();
     return () => cancelAnimationFrame(raf);
-  }, [addrs, labelLanes, labelMem]);
+  }, [addrs, cells, labelLanes, labelMem]);
 
   const patLabel = { row: t('patRow'), col: t('patCol'), scatter: t('patScatter') };
   const subtitle = { row: t('instrRow'), col: t('instrCol'), scatter: t('instrScatter') };
 
   return (
     <div
+      role="group"
       className="relative min-w-0 rounded-[20px] border border-line p-4"
       style={{
         background: 'linear-gradient(180deg, rgba(18,24,41,.9), rgba(11,15,26,.95))',
@@ -111,6 +125,8 @@ export function WarpInstrument() {
         ref={canvasRef}
         width={640}
         height={300}
+        data-testid="warp-canvas"
+        data-cells={cells.length}
         className="ltr-island block h-auto w-full max-w-full rounded-xl bg-[#080b14]"
         aria-hidden
       />

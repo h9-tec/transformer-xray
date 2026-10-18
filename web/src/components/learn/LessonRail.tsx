@@ -53,7 +53,7 @@ export function LessonRail({ activeSlug }: { activeSlug: string }) {
                 >
                   {l.n}
                 </span>
-                <span className="hidden lg:inline">{l.title}</span>
+                <span lang="en" dir="ltr" className="hidden text-start lg:inline">{l.title}</span>
               </Link>
             </li>
           );

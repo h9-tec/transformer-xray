@@ -38,13 +38,13 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
             <span>{t('minutes', { n: lesson.minutes })}</span>
             {lesson.kernelFile && <span className="nums">{t('buildsToward', { file: lesson.kernelFile })}</span>}
           </p>
-          <h1 className="m-0 mb-3.5 font-display text-[clamp(34px,4.6vw,56px)] font-extrabold leading-[1] tracking-[-0.03em] text-balance">
+          <h1 lang="en" dir="ltr" className="m-0 mb-3.5 text-start font-display text-[clamp(34px,4.6vw,56px)] font-extrabold leading-[1] tracking-[-0.03em] text-balance">
             {lesson.title}
           </h1>
-          <p className="m-0 max-w-[36em] text-[18px] text-muted">{lesson.blurb}</p>
+          <p lang="en" dir="ltr" className="m-0 max-w-[36em] text-start text-[18px] text-muted">{lesson.blurb}</p>
           <div className="mt-5 flex flex-wrap gap-2">
             {lesson.goals.map((g) => (
-              <span key={g} className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] text-muted">
+              <span key={g} lang="en" dir="ltr" className="rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] text-muted">
                 {g}
               </span>
             ))}
@@ -53,11 +53,15 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
 
         <section className="mb-10 max-w-[66ch]">
           <h2 className="m-0 mb-2 font-display text-[22px] font-bold tracking-tight">{t('youWillBuild')}</h2>
-          <p className="m-0 text-[17px] text-[#cfd6e6]">{lesson.builds}</p>
+          <p lang="en" dir="ltr" className="m-0 text-start text-[17px] text-[#cfd6e6]">{lesson.builds}</p>
         </section>
 
-        <Slot title={t('simulator')} tag="simulator" body={t('opensWithInterpreter')} />
-        <Slot title={t('exercise')} tag="exercise" body={t('opensWithInterpreter')} />
+        <Slot title={t('simulator')} tag="simulator" body={t('slotSimulator')} />
+        <Slot
+          title={t('exercise')}
+          tag="exercise"
+          body={kernel ? t('slotExerciseKernel') : t('slotExercise')}
+        />
 
         {kernel && (
           <section className="mb-10" data-testid="kernel-source">
@@ -73,7 +77,7 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
           </section>
         )}
 
-        <Slot title={t('quiz')} tag="quiz" body={t('opensWithInterpreter')} />
+        <Slot title={t('quiz')} tag="quiz" body={t('slotQuiz')} />
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-fwd/30 px-6 py-5" style={{ background: 'linear-gradient(135deg, rgba(116,199,255,.08), rgba(255,154,77,.06))' }}>
           <div className="flex flex-wrap gap-3">

@@ -14,7 +14,7 @@
     "proof2a": "5 kernels",
     "proof2b": " compiled and timed on real hardware",
     "proof3a": "Nothing canned.",
-    "proof3b": " Every number on screen is computed live",
+    "proof3b": " The model, its gradients and its kernels are real and run live",
     "instrTitle": "One warp, 32 lanes",
     "instrRow": "reading a row of floats",
     "instrCol": "reading down a column",
@@ -26,13 +26,13 @@
     "rdSec": "32-byte sectors touched",
     "rdEff": "bytes moved per useful byte",
     "canvasLanes": "lanes 0 to 31, one load instruction",
-    "canvasMem": "global memory, 32-byte sectors",
+    "canvasMem": "the 32-byte sectors this load fetches, 8 floats each",
     "pathTitle": "The path: twelve lessons laid out like the chip",
     "pathSub": "Each block is a lesson. It lights up when your kernel passes its correctness check and its performance targets. Finish the row and you understand why the next row exists.",
     "howTitle": "How a lesson works",
     "howSub": "Every lesson follows the same loop, so after lesson two you stop thinking about the site and think about the GPU.",
     "how1Title": "See it move",
-    "how1Body": "A simulator built from the lesson's kernel. Drag the block size, watch warps form, see memory transactions coalesce or shatter.",
+    "how1Body": "A simulator built from the lesson's kernel. You drag the block size, watch warps form, and see memory transactions coalesce or shatter.",
     "how2Title": "Write the kernel",
     "how2Body": "Real CUDA in an editor. The in-browser GPU runs it warp by warp and reports sectors per request, bank conflicts, divergence and races, with the offending line highlighted.",
     "how3Title": "Find it in the model",
@@ -49,7 +49,8 @@
     "labInspectBody": "Nine views from tokens to AdamW, each with a forward and a backward twin.",
     "labInspectCta": "X-ray the math",
     "footer1": "Transformer X-Ray. Open source, runs entirely in your browser.",
-    "footer2": "Model: 4 layers, d=192, 6 heads, 1,841,472 parameters."
+    "footer2": "Model: 4 layers, d=192, 6 heads, 1,841,472 parameters.",
+    "howNote": "The simulators, the editor and the in-browser GPU open with the next release. The model and the three labs are live today."
   },
   "nav": {
     "playground": "Playground",
@@ -124,12 +125,15 @@
     "simulator": "Simulator",
     "exercise": "Exercise",
     "quiz": "Quiz",
-    "opensWithInterpreter": "Opens with the in-browser GPU release. The kernel below is the real one this lesson builds toward; the inspector link shows it running inside the model today.",
     "kernelTitle": "The real kernel",
     "inModel": "See it in the model",
     "next": "Next lesson",
     "nextMeta": "Lesson {n}, {min} min",
     "passedOf": "{k} of 12 passed",
-    "progress": "Course progress"
+    "progress": "Course progress",
+    "slotSimulator": "Opens with the next release: a simulator built from this lesson's kernel, with sliders for block size and shape.",
+    "slotExercise": "Opens with the next release: you write the kernel in the editor and the in-browser GPU checks it.",
+    "slotExerciseKernel": "Opens with the next release: you write this kernel in the editor and the in-browser GPU checks it against the real one shown below.",
+    "slotQuiz": "Opens with the next release: three questions, graded on the spot."
   }
 }

@@ -21,6 +21,11 @@ describe('LESSONS', () => {
       expect(fs.existsSync(p), l.slug).toBe(true);
     }
   });
+  it('states the bank-conflict padding trick in columns, not bytes', () => {
+    const l = lessonBySlug('bank-conflicts')!;
+    expect(l.blurb + l.goals.join(' ')).toMatch(/column/);
+    expect(l.blurb).not.toMatch(/byte of padding/);
+  });
   it('lessonBySlug finds tiled-matmul and misses unknown', () => {
     expect(lessonBySlug('tiled-matmul')?.n).toBe(8);
     expect(lessonBySlug('nope')).toBeUndefined();

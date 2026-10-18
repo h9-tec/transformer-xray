@@ -57,10 +57,10 @@ export function LessonMap() {
                   <span>{String(l.n).padStart(2, '0')}</span>
                   <span>{t('minutes', { n: l.minutes })}</span>
                 </div>
-                <h3 className="m-0 font-display text-[17px] font-bold leading-tight tracking-tight">
+                <h3 lang="en" dir="ltr" className="m-0 text-start font-display text-[17px] font-bold leading-tight tracking-tight">
                   {l.title}
                 </h3>
-                <p className="m-0 flex-1 text-[13.5px] text-muted">{l.blurb}</p>
+                <p lang="en" dir="ltr" className="m-0 flex-1 text-start text-[13.5px] text-muted">{l.blurb}</p>
                 <div className="h-1 overflow-hidden rounded bg-white/[.06]">
                   <i
                     className={`block h-full ${

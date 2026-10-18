@@ -22,7 +22,10 @@ export function HowItWorks() {
       <h2 className="m-0 mb-2.5 font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
         {t('howTitle')}
       </h2>
-      <p className="m-0 mb-8 max-w-[40em] text-[17px] text-muted">{t('howSub')}</p>
+      <p className="m-0 mb-3 max-w-[40em] text-[17px] text-muted">{t('howSub')}</p>
+      <p className="m-0 mb-8 max-w-[40em] rounded-lg border border-dashed border-accent/40 bg-accent/5 px-3.5 py-2.5 text-[14px] text-muted">
+        {t('howNote')}
+      </p>
       <div className="grid gap-[18px] md:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <article key={i} className="panel min-w-0 px-[22px] pt-[22px] pb-5">

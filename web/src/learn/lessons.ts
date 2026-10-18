@@ -82,9 +82,9 @@ export const LESSONS: Lesson[] = [
     n: 7,
     slug: 'bank-conflicts',
     title: 'Bank conflicts',
-    blurb: 'A transpose, then one byte of padding fixes it.',
+    blurb: 'A transpose, then one column of padding fixes it.',
     minutes: 25,
-    goals: ['32 banks, 4 bytes wide', 'Why stride-32 access serializes', 'The +1 padding trick'],
+    goals: ['32 banks, 4 bytes wide', 'Why stride-32 access serializes', 'The +1 column padding trick'],
     builds: 'You will write a shared-memory transpose and remove its 32-way bank conflict.',
   },
   {

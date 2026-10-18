@@ -35,7 +35,7 @@ export function DepthToggle() {
           type="button"
           aria-pressed={depth === level}
           onClick={() => apply(level)}
-          className={`px-4 py-1.5 transition-colors ${
+          className={`px-2.5 py-1.5 text-[13px] transition-colors sm:px-4 sm:text-sm ${
             depth === level ? 'bg-accent font-medium text-bg' : 'text-muted hover:text-ink'
           }`}
         >
