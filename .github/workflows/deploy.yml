@@ -51,7 +51,7 @@ jobs:
       # The smoke suite in the exact layout Pages serves: proves the worker,
       # model and corpus URLs resolve under the prefix before anything ships.
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test
+      - run: pnpm exec playwright test --project default
         env:
           BASE_PATH: /transformer-xray
       - uses: actions/configure-pages@v5

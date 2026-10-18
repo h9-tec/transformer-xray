@@ -51,7 +51,7 @@ jobs:
       - run: pnpm build
         env:
           NEXT_PUBLIC_BASE_PATH: /transformer-xray
-      - run: pnpm exec playwright test
+      - run: pnpm exec playwright test --project default
         env:
           BASE_PATH: /transformer-xray
 
