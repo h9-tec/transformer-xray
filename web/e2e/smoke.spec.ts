@@ -21,7 +21,7 @@ async function waitForModel(page: import('@playwright/test').Page) {
 }
 
 test('playground generates with a seed, deterministically', async ({ page }) => {
-  await page.goto('/en/playground/');
+  await page.goto('en/playground/');
   await page.getByRole('button', { name: 'generate' }).click();
   const stream = page.locator('[aria-label^="Generated text"]');
   await expect(stream.locator('button').nth(199)).toBeVisible({ timeout: 30_000 });
@@ -37,7 +37,7 @@ test('playground generates with a seed, deterministically', async ({ page }) => 
 });
 
 test('attention inspector traces and mirrors into gradients', async ({ page }) => {
-  await page.goto('/en/inspect/attention/');
+  await page.goto('en/inspect/attention/');
   await waitForModel(page);
   await page.waitForFunction(() => window.__stores.trace.getState().status === 'ready', {
     timeout: 30_000,
@@ -55,7 +55,7 @@ test('attention inspector traces and mirrors into gradients', async ({ page }) =
 });
 
 test('depth toggle reveals the senior derivation', async ({ page }) => {
-  await page.goto('/en/inspect/attention/');
+  await page.goto('en/inspect/attention/');
   const senior = page.locator('.senior-only').first();
   await expect(senior).toBeHidden();
   await page.getByRole('button', { name: 'Full depth' }).click();
@@ -64,7 +64,7 @@ test('depth toggle reveals the senior derivation', async ({ page }) => {
 });
 
 test('watch-it-learn reduces the loss from random init', async ({ page }) => {
-  await page.goto('/en/train/');
+  await page.goto('en/train/');
   await waitForModel(page);
   await page.getByRole('button', { name: 'start training' }).click();
 
@@ -86,7 +86,7 @@ test('watch-it-learn reduces the loss from random init', async ({ page }) => {
 });
 
 test('/ar renders RTL with Arabic chrome', async ({ page }) => {
-  await page.goto('/ar/');
+  await page.goto('ar/');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   await expect(page.getByText('اجعله يكتب')).toBeVisible();
