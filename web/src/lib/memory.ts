@@ -45,7 +45,7 @@ export function bankConflicts(byteAddrs: number[], banks = 32, wordBytes = 4): n
 export function laneAddresses(pattern: AccessPattern, opts: LaneAddressOpts): number[] {
   const lanes = opts.lanes ?? 32;
   const elemBytes = opts.elemBytes ?? 4;
-  const out = new Array<number>(lanes);
+  const out: number[] = Array.from({ length: lanes }, () => 0);
   if (pattern === 'row') {
     for (let l = 0; l < lanes; l++) out[l] = l * elemBytes;
   } else if (pattern === 'col') {

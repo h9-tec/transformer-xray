@@ -34,18 +34,32 @@ function safeStorage(): Storage {
     key: () => null,
     length: 0,
   };
-  const wrap =
-    (name: 'getItem' | 'setItem' | 'removeItem') =>
-    (...args: [string, string]) => {
+  // Each call is guarded: a storage that throws (private mode, blocked site
+  // data) silently falls back to the in-memory map for that call.
+  return {
+    ...fallback,
+    getItem: (k) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (localStorage as any)[name](...args);
+        return localStorage.getItem(k);
       } catch {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (fallback as any)[name](...args);
+        return fallback.getItem(k);
       }
-    };
-  return { ...fallback, getItem: wrap('getItem'), setItem: wrap('setItem'), removeItem: wrap('removeItem') };
+    },
+    setItem: (k, v) => {
+      try {
+        localStorage.setItem(k, v);
+      } catch {
+        fallback.setItem(k, v);
+      }
+    },
+    removeItem: (k) => {
+      try {
+        localStorage.removeItem(k);
+      } catch {
+        fallback.removeItem(k);
+      }
+    },
+  };
 }
 
 export const useLearnStore = create<LearnState>()(
