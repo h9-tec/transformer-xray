@@ -10,6 +10,7 @@ import { DOCS } from '@/content/en/learn';
 import { LESSONS, type Lesson } from '@/learn/lessons';
 import { LessonRail } from './LessonRail';
 import { RunPanel } from './RunPanel';
+import { Simulator } from './Simulator';
 
 function Slot({ title, body, tag }: { title: string; body: string; tag: string }) {
   return (
@@ -65,7 +66,13 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
           </section>
         )}
 
-        <Slot title={t('simulator')} tag="simulator" body={t('slotSimulator')} />
+        <section className="mb-10" data-testid="simulator">
+          <h2 className="m-0 mb-3 flex items-center gap-3 font-display text-[26px] font-bold tracking-tight">
+            {t('simulator')}
+            <span className="nums rounded-md border border-line bg-raised px-2 py-1 text-xs font-medium text-muted">simulator</span>
+          </h2>
+          <Simulator slug={lesson.slug} />
+        </section>
         <section className="mb-10" data-testid="exercise">
           <h2 className="m-0 mb-3 flex items-center gap-3 font-display text-[26px] font-bold tracking-tight">
             {t('exercise')}
