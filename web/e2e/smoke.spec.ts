@@ -89,7 +89,7 @@ test('/ar renders RTL with Arabic chrome', async ({ page }) => {
   await page.goto('ar/');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
-  await expect(page.getByText('اجعله يكتب')).toBeVisible();
+  await expect(page.getByText('دعه يكتب')).toBeVisible();
 });
 
 test('new identity: display type and copper accent are live', async ({ page }) => {

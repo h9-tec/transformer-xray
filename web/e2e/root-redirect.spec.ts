@@ -5,5 +5,5 @@ import { expect, test } from '@playwright/test';
 test('site root redirects to the English home', async ({ page }) => {
   await page.goto('./');
   await page.waitForURL(/\/en\/$/);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Transformer');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('CUDA');
 });

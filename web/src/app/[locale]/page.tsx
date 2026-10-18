@@ -1,92 +1,82 @@
 import { setRequestLocale } from 'next-intl/server';
 import { useTranslations } from 'next-intl';
 import { use } from 'react';
+import { HowItWorks } from '@/components/landing/HowItWorks';
+import { Labs } from '@/components/landing/Labs';
+import { WarpInstrument } from '@/components/landing/WarpInstrument';
+import { LessonMap } from '@/components/learn/LessonMap';
 import { Link } from '@/i18n/navigation';
-
-const STATS = [
-  { value: '1,841,472', key: 'params' },
-  { value: '1.543', key: 'valLoss' },
-  { value: '457', key: 'parityTests' },
-  { value: '100%', key: 'inBrowser' },
-] as const;
 
 export default function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
   setRequestLocale(locale);
   const t = useTranslations('home');
 
-  const doors = [
-    { href: '/playground', key: 'doorPlay', accent: 'fwd' },
-    { href: '/train', key: 'doorTrain', accent: 'bwd' },
-    { href: '/inspect/attention', key: 'doorInspect', accent: 'accent' },
-  ] as const;
-
   return (
-    <main className="relative mx-auto min-h-dvh max-w-5xl px-6">
-      {/* scanline atmosphere */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'repeating-linear-gradient(0deg, transparent 0 3px, rgb(231 234 243 / 0.012) 3px 4px)',
-        }}
-      />
-
-      <section className="flex min-h-[72dvh] flex-col justify-center gap-8 pt-16">
-        <p className="reveal nums text-xs uppercase tracking-[0.3em] text-faint">{t('kicker')}</p>
-        <h1 className="reveal font-display text-6xl font-extralight leading-[1.02] tracking-tight sm:text-8xl">
-          Transformer
-          <br />
-          <span
-            className="font-black text-fwd"
-            style={{ textShadow: '0 0 42px rgb(61 220 151 / 0.4)' }}
-          >
-            X-Ray
-          </span>
-        </h1>
-        <p className="reveal max-w-xl text-lg leading-relaxed text-muted">{t('tagline')}</p>
-
-        <div className="reveal flex flex-wrap gap-3">
-          {doors.map((d) => (
-            <Link
-              key={d.key}
-              href={d.href}
-              className={`rounded-full border px-6 py-2.5 transition-all hover:-translate-y-0.5 ${
-                d.accent === 'fwd'
-                  ? 'border-fwd text-fwd hover:bg-fwd hover:text-bg'
-                  : d.accent === 'bwd'
-                    ? 'border-bwd text-bwd hover:bg-bwd hover:text-bg'
-                    : 'border-accent text-accent hover:bg-accent hover:text-bg'
-              }`}
-            >
-              {t(d.key)} →
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="reveal grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
-        {STATS.map((s) => (
-          <div key={s.key} className="bg-surface p-5">
-            <div className="nums text-2xl text-ink">{s.value}</div>
-            <div className="mt-1 text-xs text-muted">{t(`stats.${s.key}`)}</div>
+    <main className="relative">
+      {/* hero */}
+      <section className="relative overflow-hidden pt-8 pb-10 sm:pt-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-[10%] -top-[20%] h-[70%]"
+          style={{
+            background:
+              'radial-gradient(600px 300px at 25% 30%, rgba(255,154,77,.18), transparent 70%), radial-gradient(700px 340px at 80% 20%, rgba(116,199,255,.16), transparent 70%)',
+          }}
+        />
+        <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
+          <div>
+            <p className="m-0 mb-3.5 text-[15px] text-muted">{t('kicker')}</p>
+            <h1 className="m-0 mb-5 font-display text-[clamp(40px,6.2vw,78px)] font-extrabold leading-[.98] tracking-[-0.03em] text-balance">
+              {t('h1a')}
+              <span className="text-accent" style={{ textShadow: '0 0 34px rgba(255,154,77,.45)' }}>
+                {t('h1b')}
+              </span>
+              {t('h1c')}
+            </h1>
+            <p className="m-0 mb-7 max-w-[36em] text-[19px] text-muted">{t('lede')}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="/learn/hello-thread" className="btn-primary">
+                {t('ctaStart')} <span className="nums text-xs opacity-70">{t('ctaStartMeta')}</span>
+              </Link>
+              <Link href="/playground" className="btn-ghost">
+                {t('ctaPlay')}
+              </Link>
+            </div>
+            <div className="mt-7 flex flex-wrap gap-x-7 gap-y-4 text-sm text-faint">
+              <div>
+                <b className="font-semibold text-muted">{t('proof1a')}</b>
+                {t('proof1b')}
+              </div>
+              <div>
+                <b className="font-semibold text-muted">{t('proof2a')}</b>
+                {t('proof2b')}
+              </div>
+              <div>
+                <b className="font-semibold text-muted">{t('proof3a')}</b>
+                {t('proof3b')}
+              </div>
+            </div>
           </div>
-        ))}
-      </section>
-
-      <section className="grid gap-10 py-16 md:grid-cols-2">
-        <div className="space-y-3">
-          <h2 className="font-display text-2xl font-light text-fwd">{t('realTitle')}</h2>
-          <p className="text-sm leading-relaxed text-muted">{t('realBody')}</p>
-        </div>
-        <div className="space-y-3">
-          <h2 className="font-display text-2xl font-light text-bwd">{t('deepTitle')}</h2>
-          <p className="text-sm leading-relaxed text-muted">{t('deepBody')}</p>
+          <WarpInstrument />
         </div>
       </section>
 
-      <footer className="border-t border-line py-8 text-xs text-faint">{t('footer')}</footer>
+      <section id="path" className="border-t border-line py-16 sm:py-20">
+        <h2 className="m-0 mb-2.5 font-display text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+          {t('pathTitle')}
+        </h2>
+        <p className="m-0 mb-8 max-w-[40em] text-[17px] text-muted">{t('pathSub')}</p>
+        <LessonMap />
+      </section>
+
+      <HowItWorks />
+      <Labs />
+
+      <footer className="flex flex-wrap justify-between gap-2.5 border-t border-line pt-7 pb-10 text-sm text-faint">
+        <span>{t('footer1')}</span>
+        <span className="nums">{t('footer2')}</span>
+      </footer>
     </main>
   );
 }

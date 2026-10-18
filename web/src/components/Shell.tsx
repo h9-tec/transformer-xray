@@ -9,26 +9,33 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const t = useTranslations('nav');
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-line bg-bg/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-          <Link href="/" className="font-display text-lg font-extralight tracking-tight">
-            Transformer <span className="font-black text-fwd">X-Ray</span>
+      <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
+        <div className="mx-auto flex h-[60px] max-w-6xl items-center gap-5 px-5">
+          <Link href="/" className="flex items-center gap-2.5 font-display text-[17px] font-bold tracking-tight">
+            <span aria-hidden className="glow-accent inline-block h-2.5 w-2.5 rounded-full bg-accent" />
+            Transformer X-Ray
           </Link>
-          <nav className="flex gap-4 text-sm text-muted">
-            <Link href="/playground" className="hover:text-ink">
+          <nav className="hidden items-center gap-1 text-sm text-muted sm:flex" aria-label="Primary">
+            <Link href="/learn" className="rounded-full px-3 py-1.5 hover:bg-raised hover:text-ink">
+              {t('learn')}
+            </Link>
+            <Link href="/playground" className="rounded-full px-3 py-1.5 hover:bg-raised hover:text-ink">
               {t('playground')}
             </Link>
-            <Link href="/train" className="hover:text-ink">
+            <Link href="/train" className="rounded-full px-3 py-1.5 hover:bg-raised hover:text-ink">
               {t('train')}
             </Link>
           </nav>
-          <div className="ms-auto flex items-center gap-3">
+          <div className="ms-auto flex items-center gap-2.5">
             <DepthToggle />
             <LocaleSwitch />
+            <Link href="/learn" className="btn-primary hidden !px-4 !py-1.5 text-sm md:inline-flex">
+              {t('start')}
+            </Link>
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl px-6 py-8">{children}</div>
+      <div className="mx-auto max-w-6xl px-5 py-8">{children}</div>
     </>
   );
 }
