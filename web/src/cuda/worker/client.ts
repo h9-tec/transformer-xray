@@ -4,23 +4,13 @@
  * 'the kernel runner restarted'. */
 
 import { withBase } from '@/lib/basePath';
-import type { CudaRequest, CudaResponse } from './protocol';
+import { CudaClientError, type CudaClientErrorCode, type CudaRequest, type CudaResponse } from './protocol';
+
+export { CudaClientError, type CudaClientErrorCode } from './protocol';
 import { WORKER_URL } from './worker-url';
 
 type Pending = { resolve: (r: CudaResponse) => void; reject: (e: Error) => void };
 
-export type CudaClientErrorCode = 'cancelled' | 'crashed';
-
-/** Why a run never produced a response: the user stopped it, or the worker died. */
-export class CudaClientError extends Error {
-  constructor(
-    readonly code: CudaClientErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'CudaClientError';
-  }
-}
 
 export class CudaClient {
   private worker: Worker | null = null;

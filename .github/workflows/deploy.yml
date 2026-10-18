@@ -35,6 +35,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # worker-url.ts files are generated (gitignored); tests import the clients
+      - run: pnpm build:worker
       - run: pnpm test
       - run: pnpm build
         env:

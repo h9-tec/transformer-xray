@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CudaClientError } from '@/cuda/worker/client';
+import { CudaClientError } from '@/cuda/worker/protocol';
 import { classifyRunFailure } from '@/learn/runFailure';
 
 describe('classifyRunFailure', () => {

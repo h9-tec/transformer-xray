@@ -1,7 +1,7 @@
 /** Turns a rejected worker run into something the panel can show honestly:
  * a cancelled run is not an error, a crashed runner has no source line. */
 
-import { CudaClientError } from '@/cuda/worker/client';
+import { CudaClientError } from '@/cuda/worker/protocol';
 
 export type RunFailure = { kind: 'cancelled' } | { kind: 'crash'; message: string };
 

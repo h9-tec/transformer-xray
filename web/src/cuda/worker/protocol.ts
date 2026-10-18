@@ -32,3 +32,16 @@ export interface WireError {
 export type CudaResponse =
   | { id: number; type: 'done'; buffers: ArrayBuffer[]; result: LaunchResult; ms: number }
   | { id: number; type: 'error'; error: WireError; ms: number };
+
+export type CudaClientErrorCode = 'cancelled' | 'crashed';
+
+/** Why a run never produced a response: the user stopped it, or the worker died. */
+export class CudaClientError extends Error {
+  constructor(
+    readonly code: CudaClientErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'CudaClientError';
+  }
+}
