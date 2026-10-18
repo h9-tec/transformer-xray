@@ -1,0 +1,45 @@
+# Coalescing
+
+Global memory is read in **32-byte sectors**. The hardware does not fetch a
+float; it fetches the sector the float lives in. Whether a warp's 32 loads
+touch 4 sectors or 32 sectors is the single biggest lever on memory-bound
+code, and it is entirely decided by your index arithmetic.
+
+<Junior>
+  When 32 lanes read 32 consecutive floats, those 128 bytes are 4 sectors:
+  one request, nothing wasted. That is a **coalesced** access. When lane 0
+  reads one row and lane 1 reads the next row, 256 bytes apart, every lane
+  lands in its own sector: 32 sectors for the same 128 useful bytes, eight
+  times the traffic.
+
+  The embedding lookup, `embedding_gather`, copies one row of the token table
+  per position. The starter is correct but puts the *position* in the lane and
+  the *feature* in the slow index, so neighbouring lanes hit different rows.
+  Swap the roles: features across lanes, positions across warps.
+</Junior>
+
+<Senior>
+  The metric the simulator reports is **sectors per request**: the hero on the
+  landing page computes it the same way (`sectorsTouched` over the 32 byte
+  addresses of one warp instruction). The ideal for 4-byte elements is 4; the
+  worst is 32. Stride-2 access already costs 8 sectors for 128 useful bytes.
+
+  Coalescing is about *address pattern per instruction*, not about total
+  bytes. In the gather, the `ids[t]` load is a broadcast inside a warp once
+  $t$ is the slow index (every lane reads the same int, one sector), the row
+  read is 4 sectors, the store is 4 sectors. In the starter, all three are
+  strided. The result is identical; the traffic is not.
+</Senior>
+
+```cuda
+__global__ void embedding_gather(const float* wte, const int* ids, float* out, int T, int D) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= T * D) return;
+  int t = idx / D;   // which position
+  int i = idx % D;   // which feature: varies fastest across lanes
+  out[idx] = wte[ids[t] * D + i];
+}
+```
+
+In the real model the gather is the first kernel of every forward pass. It
+does zero FLOPs; coalescing is the whole story.

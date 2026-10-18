@@ -1,0 +1,42 @@
+# Hello, thread
+
+A CPU program is one worker walking down a list. A GPU program is a crowd:
+you describe what *one* worker does, then launch thousands of them at once,
+and each one figures out which item is its own from three numbers the
+hardware hands it.
+
+<Junior>
+  Think of a stadium. Seats are grouped into **blocks**; inside a block each
+  seat has a number. `blockIdx.x` is your block, `blockDim.x` is how many
+  seats a block has, and `threadIdx.x` is your seat. Your place in the whole
+  stadium is `blockIdx.x * blockDim.x + threadIdx.x`. That is the one line
+  almost every kernel starts with.
+
+  A **kernel** is the function every thread runs. It is marked `__global__`
+  and launched with a grid shape: how many blocks, how many threads per block.
+  In `vector_add`, thread `i` adds exactly one pair of numbers.
+</Junior>
+
+<Senior>
+  The launch `vector_add<<<16, 256>>>(a, b, y, n)` creates $16 \times 256 =
+  4096$ threads. The index formula is a flattening of a two-level coordinate
+  $(b, t)$ into $i = b \cdot B + t$, where $B$ is the block size. Blocks are
+  the unit the hardware schedules onto streaming multiprocessors; threads
+  within a block can cooperate (shared memory, barriers), threads in different
+  blocks cannot assume anything about each other.
+
+  Nothing forces the grid to match the data size. Lesson 2 handles the
+  mismatch; for now the sizes line up exactly, which is why the starter's
+  only bug is the index.
+</Senior>
+
+```cuda
+__global__ void vector_add(const float* a, const float* b, float* y, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) y[i] = a[i] + b[i];
+}
+```
+
+Run the starter and read the first mismatch: every thread computed index 0,
+so `y[0]` was written 4096 times and nothing else was touched. Then give each
+thread its own index and watch all 4096 elements light up.

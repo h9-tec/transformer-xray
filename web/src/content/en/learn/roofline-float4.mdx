@@ -1,0 +1,53 @@
+# Roofline and float4
+
+You now have twelve kernels' worth of intuition. The roofline turns it into
+one picture: for any kernel, how fast *could* it go, and which wall is it
+leaning on?
+
+<Junior>
+  Every GPU has two speed limits: how many floating-point operations it can
+  do per second, and how many bytes it can move per second. A kernel that
+  does a lot of math per byte it loads is held back by the first limit. A
+  kernel that does little math per byte is held back by the second. The
+  ratio, FLOPs per byte, is called **arithmetic intensity**, and it decides
+  which limit applies.
+
+  GELU does about 20 operations per float and moves 8 bytes per float: an
+  intensity of 2.5. That is far below the point where arithmetic matters, so
+  GELU is memory-bound, and the only way to make it faster is to move bytes
+  more efficiently. The exercise rewrites `gelu` with float4: the same bytes
+  in a quarter of the instructions.
+</Junior>
+
+<Senior>
+  The roofline model: attainable FLOP/s $= \min(\text{peak FLOP/s},\ I \times
+  \text{bandwidth})$ where $I$ is intensity in FLOP/byte. The ridge point
+  $I^* = \text{peak}/\text{bandwidth}$ is where the two limits meet; for a
+  laptop RTX it is on the order of 50 to 100 FLOP/byte. Every elementwise
+  kernel in the model (GELU, residual add, LayerNorm) sits well left of the
+  ridge; the matmuls at the model's shapes sit near it; only large GEMMs
+  reach the compute roof.
+
+  Vectorization does not change intensity. The float4 GELU moves exactly the
+  same bytes. What it changes is the number of memory *instructions* and
+  warp requests the memory system must track, which is what limits a
+  memory-bound kernel in practice once the access pattern is already
+  coalesced. The repo's measured results file shows the float4 variant ahead
+  of the scalar one; the simulator shows the request count dropping from 256
+  to 64 for 4096 floats.
+</Senior>
+
+```cuda
+__global__ void gelu(const float4* x, float4* y, int n) {
+  int n4 = n / 4;
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n4; i += gridDim.x * blockDim.x) {
+    float4 v = x[i];
+    y[i] = make_float4(gelu_tanh(v.x), gelu_tanh(v.y), gelu_tanh(v.z), gelu_tanh(v.w));
+  }
+}
+```
+
+What comes next, and is out of this course's scope: tensor cores (matrix
+instructions with their own roofline), online softmax and key tiling
+(FlashAttention), and mixed precision. Each is a refinement of a lesson you
+have now done by hand.

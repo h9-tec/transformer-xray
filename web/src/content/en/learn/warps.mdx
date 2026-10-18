@@ -1,0 +1,47 @@
+# Warps: the real unit of execution
+
+You write code for one thread. The hardware does not run one thread. It runs
+**32 at a time**, in lockstep, sharing a single instruction stream. That group
+is a warp, and most GPU performance stories are warp stories.
+
+<Junior>
+  Picture 32 people reading the same sheet of instructions aloud together.
+  They can each hold different numbers, but they all do the same operation
+  at the same moment. Now the sheet says "if your number is odd, double it;
+  otherwise add one". The group cannot split up. So first everyone with an odd
+  number acts while the others wait, then everyone with an even number acts
+  while the first group waits. Both halves took a turn; the warp did twice the
+  work for the same result. That is **divergence**.
+
+  Divergence is not a bug, but it is a cost. The lesson's exercise,
+  `odd_even`, asks you to get the same answer without splitting the warp:
+  compute both candidates and keep one with arithmetic.
+</Junior>
+
+<Senior>
+  A warp executes under an **active mask**. At a branch, the hardware runs the
+  taken path with the mask of lanes that took it, then the other path with the
+  complement, then reconverges. Cost is proportional to the union of paths,
+  not the longest one. The simulator counts every warp instruction executed
+  under a partial mask and reports it as *divergent instructions*; the hero on
+  the landing page draws exactly this.
+
+  Divergence is only a problem *within* a warp. A condition that is uniform
+  across the 32 lanes, such as `(threadIdx.x / 32) % 2`, costs nothing: the
+  whole warp takes one path. Modern compilers turn small if/else bodies into
+  predicated selects automatically, which is why the hand-written select below
+  mirrors what the machine would prefer anyway.
+</Senior>
+
+```cuda
+__global__ void odd_even(const float* a, float* y, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) return;
+  float odd = (float)(i & 1);
+  y[i] = odd * (a[i] * 2.f) + (1.f - odd) * (a[i] + 1.f);
+}
+```
+
+The early `return` for `i >= n` looks like a branch too, and it is. It does
+not diverge here only because 1024 threads exactly cover 1024 elements, so
+every lane takes the same side.

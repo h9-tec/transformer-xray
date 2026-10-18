@@ -1,0 +1,46 @@
+# The memory hierarchy, with numbers
+
+Most kernels are not limited by how fast the GPU can multiply. They are
+limited by how fast it can be fed. Knowing where data lives, and what each
+level costs, is the difference between guessing and engineering.
+
+<Junior>
+  From fastest to slowest:
+
+  - **Registers**: each thread's private variables. Effectively free.
+  - **Shared memory**: a small scratchpad (tens of KB) that one block shares.
+    On-chip, a few cycles away.
+  - **L2 cache**: a few tens of MB shared by the whole chip.
+  - **Global memory (HBM)**: the gigabytes you `cudaMalloc`. Off-chip,
+    hundreds of cycles away, but very wide.
+
+  A copy kernel does no math at all: read a float, write a float. Its speed is
+  purely bandwidth. The exercise, `copy`, asks you to move the same bytes with
+  a quarter of the instructions by loading four floats at a time.
+</Junior>
+
+<Senior>
+  Rough per-access costs on a current GPU: register 0 cycles (operands),
+  shared memory about 20 to 30 cycles, L2 about 200, HBM 400 to 800. Bandwidth
+  ranges the other way: HBM on a laptop RTX is a few hundred GB/s, L2 several
+  TB/s, shared memory and registers tens of TB/s aggregate.
+
+  Which level you are bound by follows from **arithmetic intensity**: FLOPs
+  per byte moved from the slowest level you touch. A copy has intensity 0, a
+  GELU about 2.5 FLOP/byte, a large matmul hundreds. Lesson 12 draws this as
+  the roofline. The vectorized copy does not reduce bytes; it reduces
+  *instructions* and *requests*. Each lane issues one 16-byte load instead of
+  four 4-byte ones, so a warp request becomes 512 bytes, and the memory
+  pipeline has four times fewer transactions to track for the same traffic.
+</Senior>
+
+```cuda
+__global__ void copy(const float4* x, float4* y, int n) {
+  int n4 = n / 4;
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n4) y[i] = x[i];
+}
+```
+
+Watch the request count in the result card: the scalar version issues 256
+warp requests for 4096 floats; the float4 version issues 64.

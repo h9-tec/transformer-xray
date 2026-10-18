@@ -1,0 +1,53 @@
+# Tiled matmul: reuse every float 32 times
+
+Matrix multiply is the transformer. QKV projections, the attention output,
+both MLP layers, the logits: all the same kernel with different shapes. The
+naive version is correct and spends almost all its time waiting for memory.
+Tiling is the one idea that fixes it, and it is the idea behind cuBLAS.
+
+<Junior>
+  Picture a block of 32×32 threads computing a 32×32 patch of C. Thread
+  $(i, j)$ walks the whole $K$ dimension reading $A[i, k]$ and $B[k, j]$.
+  Now notice that thread $(i, j+1)$ reads the **exact same** $A[i, k]$.
+  Thirty-two threads in the row all read it, and the GPU fetches it from
+  global memory thirty-two times.
+
+  Shared memory is the fix: the block loads a 32×32 tile of A and a 32×32
+  tile of B into it once, then each thread reads from the scratchpad. Every
+  loaded float is reused 32 times. The exercise `matmul` starts from the naive
+  kernel; your job is to add the two tiles and the two barriers.
+</Junior>
+
+<Senior>
+  Traffic for $C = AB$ with $M \times K$ and $K \times N$:
+
+  $$
+  \text{naive} \approx 2MNK \cdot 4\,\text{B}, \qquad
+  \text{tiled} \approx \frac{2MNK}{\text{TILE}} \cdot 4\,\text{B}
+  $$
+
+  At the model's QKV shape ($128 \times 192 \times 576$) that is 113 MB
+  against 3.5 MB for a 28 MFLOP job. Two barriers per k-step are required:
+  the first so no thread reads a tile before every element is staged, the
+  second so no thread overwrites the tile for step $k_0 + \text{TILE}$ while a
+  slower warp is still multiplying from it. Remove the second and the race
+  detector will show you exactly which lines collide.
+
+  Real GEMMs go further: register tiling (each thread computes a small
+  sub-block), double buffering, and tensor-core instructions. All of them
+  are refinements of this reuse argument.
+</Senior>
+
+```cuda
+for (int k0 = 0; k0 < K; k0 += TILE) {
+  As[threadIdx.y][threadIdx.x] = (i < M && k0 + threadIdx.x < K) ? A[i * K + k0 + threadIdx.x] : 0.f;
+  Bs[threadIdx.y][threadIdx.x] = (k0 + threadIdx.y < K && j < N) ? B[(k0 + threadIdx.y) * N + j] : 0.f;
+  __syncthreads();
+  for (int k = 0; k < TILE; k++) acc += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+  __syncthreads();
+}
+```
+
+The traffic target asks for at least 12× less than the naive kernel at the
+64³ exercise size; the real kernel achieves about 16×, and the gap to the
+ideal 32× is the C stores and the small size.

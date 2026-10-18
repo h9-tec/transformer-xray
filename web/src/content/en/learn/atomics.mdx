@@ -1,0 +1,47 @@
+# Atomics
+
+The embedding lookup in the forward pass is a gather: each position copies a
+row. Its backward is a scatter: each position adds its gradient *into* a row.
+When two positions hold the same token, two threads add into the same
+address at the same time, and `+=` is not safe.
+
+<Junior>
+  `x += v` is three steps: read x, add v, write x back. Two threads doing it
+  together can both read the old value, both add, and both write, so one
+  contribution vanishes. That is the **lost update**, and it is the most
+  common GPU bug that produces answers which are *almost* right.
+
+  `atomicAdd(&x, v)` does the three steps as one indivisible operation. Only
+  threads that hit the same address wait for each other; everyone else runs
+  at full speed. The exercise `embedding_scatter_add` uses token ids with
+  heavy repeats so the collisions are real.
+</Junior>
+
+<Senior>
+  This simulator runs blocks one after another and warps in a fixed order, so
+  the starter's plain `+=` may produce the *correct* sum here. Real hardware
+  runs blocks concurrently and interleaves warps, and the lost updates are
+  frequent and non-deterministic. The race detector is what catches it: two
+  different blocks writing the same `dWte` address with no ordering between
+  them is reported regardless of the values. The lesson is that correct
+  output is not evidence of a correct kernel.
+
+  Atomics cost roughly a global memory round trip per operation when they
+  collide, and nearly nothing when they do not. Real embedding backwards sort
+  by token id or use segmented reductions to avoid contention on frequent
+  tokens; the atomic version is the correct baseline they are measured
+  against.
+</Senior>
+
+```cuda
+__global__ void embedding_scatter_add(const float* dOut, const int* ids, float* dWte, int T, int D) {
+  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx >= T * D) return;
+  int t = idx / D;
+  int i = idx % D;
+  atomicAdd(&dWte[ids[t] * D + i], dOut[idx]);
+}
+```
+
+The gather's transpose is a scatter. That symmetry shows up again in every
+backward pass of the model.

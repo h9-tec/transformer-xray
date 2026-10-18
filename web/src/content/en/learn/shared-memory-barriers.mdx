@@ -1,0 +1,49 @@
+# Shared memory and barriers
+
+Threads in a block can talk to each other through a small on-chip scratchpad.
+That is what makes tiling, reductions and fused kernels possible. It also
+introduces the first bug class that has no equivalent in single-threaded
+code: the data race.
+
+<Junior>
+  `__shared__ float s[64]` declares 64 floats that every thread *in this
+  block* can read and write. Thread 5 writes `s[5]`; thread 58 can read it
+  later. But "later" is not automatic. Thread 58 might run its read before
+  thread 5 has done its write, in which case it reads whatever was there
+  before, usually zero.
+
+  `__syncthreads()` is the fix: a line no thread in the block may pass until
+  every thread has reached it. Put it between the writes and the reads and the
+  reads are guaranteed to see complete data. The exercise `reverse_blocks` is
+  the smallest kernel that needs one.
+</Junior>
+
+<Senior>
+  The barrier is also a memory fence for shared memory: writes before it are
+  visible to reads after it, block-wide. Two rules keep it safe. Every thread
+  of the block must reach the *same* barrier (a barrier inside `if
+  (threadIdx.x < 16)` is undefined behaviour; the simulator makes it a hard
+  error). And threads that have already returned do not participate, which is
+  why an early `return` before a barrier is fine but a *conditional* barrier
+  is not.
+
+  The simulator's race detector records, per shared address, who wrote it and
+  in which barrier epoch. A read or write by a different thread in the same
+  epoch is reported with both source lines. It does this regardless of the
+  values, because a race that happens to produce the right number on this run
+  is still a race.
+</Senior>
+
+```cuda
+__global__ void reverse_blocks(const float* x, float* y, int n) {
+  __shared__ float s[64];
+  int t = threadIdx.x;
+  int base = blockIdx.x * blockDim.x;
+  s[t] = x[base + t];
+  __syncthreads();
+  y[base + t] = s[blockDim.x - 1 - t];
+}
+```
+
+Run the starter: the result is wrong *and* the race card names line 9 and
+line 10. Add the barrier and both go away together.

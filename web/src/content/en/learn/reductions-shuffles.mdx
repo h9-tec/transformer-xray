@@ -1,0 +1,46 @@
+# Reductions and warp shuffles
+
+A sum over 64 numbers is trivial on a CPU and a design problem on a GPU: 32
+lanes each hold a piece of the answer and have to combine them without
+anyone owning the whole thing. The tool for that is the warp shuffle, which
+lets a lane read another lane's register directly.
+
+<Junior>
+  LayerNorm needs the mean and variance of every row. The lazy version,
+  `layernorm_warp` as the starter writes it, gives the row to one warp and
+  then lets lane 0 do all the work while 31 lanes sit idle: three loops over
+  64 columns, serial.
+
+  The cooperative version: every lane sums the columns it owns (lane 0 takes
+  columns 0 and 32, lane 1 takes 1 and 33), then the 32 partial sums are
+  combined in five steps. Step one: each lane adds the value from the lane 16
+  above it. Step two: 8 above. Then 4, 2, 1. After five adds, lane 0 holds
+  the total. `__shfl_down_sync(mask, v, offset)` is "give me `v` from the
+  lane `offset` places up", in one instruction, no memory involved.
+</Junior>
+
+<Senior>
+  The tree reduction is $\log_2 32 = 5$ shuffle-adds against 31 serial adds,
+  and more importantly it keeps all 32 lanes busy. After the tree only lane 0
+  has the full sum, so `__shfl_sync(mask, v, 0)` broadcasts it before the
+  variance pass. Shuffles move data lane to lane through the register file,
+  so they need neither shared memory nor a barrier; the `_sync` suffix and
+  the mask name the lanes that participate.
+
+  The model's measured numbers make the point: on the RTX in the repo's
+  results file, `layernorm_naive` (one thread per row) and `layernorm_warp`
+  differ by about 10×, and at T=128 rows the naive kernel leaves more than 99%
+  of the GPU idle. The simulator reports the divergence count: the lane-0
+  version executes almost every instruction with 31 lanes masked.
+</Senior>
+
+```cuda
+__device__ inline float warp_sum(float v) {
+  for (int offset = 16; offset > 0; offset >>= 1)
+    v += __shfl_down_sync(0xffffffffu, v, offset);
+  return v;
+}
+```
+
+The exercise keeps the kernel name `layernorm_warp` and the launch of one
+32-thread block per row. Only the body changes.

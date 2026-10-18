@@ -1,0 +1,49 @@
+# Fusing a pipeline: attention in one kernel
+
+Attention is three operations in a row: scores, softmax, weighted sum.
+Written as three kernels, the $T \times T$ score matrix is written to global
+memory and read back twice. Written as one kernel, it never leaves the chip.
+That is fusion, and it is why production attention kernels exist.
+
+<Junior>
+  `attention_row` gives one block to one query row. Step one, the block's
+  threads split the columns and each computes a dot product of the query with
+  one key, storing the score in shared memory. Barrier. Step two, one thread
+  turns the scores into a softmax: subtract the max, exponentiate, divide by
+  the sum. Barrier. Step three, the threads split the output features and
+  each sums score times value down the column.
+
+  The causal mask costs nothing: row `i` simply never loops past column `i`.
+  The starter skips the softmax and the first barrier; put both back.
+</Junior>
+
+<Senior>
+  Softmax subtracts the row maximum before exponentiating so the largest term
+  is $e^0 = 1$ and nothing overflows; the result is mathematically identical
+  because the constant cancels in the normalization. Both barriers are
+  load-bearing: the first because step two reads scores written by other
+  threads, the second because step three reads the normalized scores written
+  by thread 0.
+
+  The loop bound as a mask has a cost of its own: row 0 processes one column,
+  row $T-1$ processes $T$. Blocks finish at very different times, which is
+  the load imbalance the simulator's attention view draws. FlashAttention
+  goes further than this kernel in two ways: it tiles over keys so the row
+  never has to fit in shared memory, and it computes the softmax online, one
+  tile at a time, carrying a running max and sum.
+</Senior>
+
+```cuda
+// 2. softmax over s[0..row], max-subtraction, single thread for clarity
+if (tid == 0) {
+  float mx = -1e30f;
+  for (int j = 0; j <= row; j++) mx = fmaxf(mx, s[j]);
+  float sum = 0.f;
+  for (int j = 0; j <= row; j++) { s[j] = expf(s[j] - mx); sum += s[j]; }
+  float inv = 1.f / sum;
+  for (int j = 0; j <= row; j++) s[j] *= inv;
+}
+```
+
+Doing the softmax on one thread is deliberately simple. Turning it into a
+warp reduction with the shuffles from lesson 9 is the natural next step.

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { CudaCode } from '@/components/gpu/CudaCode';
 import { Link } from '@/i18n/navigation';
 import { readKernel } from '@/lib/kernels';
+import { DOCS } from '@/content/en/learn';
 import { LESSONS, type Lesson } from '@/learn/lessons';
 import { LessonRail } from './LessonRail';
 
@@ -27,6 +28,7 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
   const t = useTranslations('learn');
   const next = LESSONS.find((l) => l.n === lesson.n + 1);
   const kernel = lesson.kernelFile ? readKernel(lesson.kernelFile) : null;
+  const Doc = DOCS[lesson.slug];
 
   return (
     <div className="grid gap-6 py-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
@@ -55,6 +57,12 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
           <h2 className="m-0 mb-2 font-display text-[22px] font-bold tracking-tight">{t('youWillBuild')}</h2>
           <p lang="en" dir="ltr" className="m-0 text-start text-[17px] text-[#cfd6e6]">{lesson.builds}</p>
         </section>
+
+        {Doc && (
+          <section className="prose-lesson mb-12 max-w-[70ch]" lang="en" dir="ltr" data-testid="concept">
+            <Doc components={{ h1: 'h2' }} />
+          </section>
+        )}
 
         <Slot title={t('simulator')} tag="simulator" body={t('slotSimulator')} />
         <Slot

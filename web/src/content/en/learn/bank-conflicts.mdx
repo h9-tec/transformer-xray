@@ -1,0 +1,47 @@
+# Bank conflicts
+
+Shared memory is fast because it is split into 32 independent **banks** that
+can each serve one word per cycle. Read 32 different banks and you get 32
+words in one cycle. Read the same bank 32 times and you wait 32 cycles. The
+difference is one column of padding.
+
+<Junior>
+  Imagine 32 cashiers. If each of 32 customers goes to a different cashier,
+  everyone is served at once. If all 32 line up at cashier number 0, it takes
+  32 turns. Words of shared memory are dealt out to cashiers in order: word 0
+  to bank 0, word 1 to bank 1, word 32 back to bank 0.
+
+  In the transpose `transpose32`, writing the tile row by row is fine. Reading
+  it column by column means lane 0 reads word 0, lane 1 reads word 32, lane 2
+  word 64: all bank 0. Declare the tile as 32 rows of **33** and row `r` now
+  starts at word `33r`, which is bank `r`. The same column read hits 32
+  different banks.
+</Junior>
+
+<Senior>
+  Bank of a 4-byte word at byte address $a$ is $(a / 4) \bmod 32$. A warp
+  access conflicts $k$-way when $k$ distinct words map to one bank; identical
+  addresses are a broadcast and do not conflict. The simulator reports the
+  worst conflict degree seen by any shared-memory instruction, computed with
+  the same `bankConflicts` function the landing page uses.
+
+  Stride-$s$ access across lanes is conflict-free iff $\gcd(s, 32) = 1$:
+  odd strides are always fine, which is why padding a 32-wide row to 33
+  works and padding to 34 would not. For 8-byte elements the bank width
+  interacts with the access size and the analysis changes; the course stays
+  at 4-byte words.
+</Senior>
+
+```cuda
+__global__ void transpose32(const float* in, float* out) {
+  __shared__ float tile[32][33];
+  int tx = threadIdx.x;
+  int ty = threadIdx.y;
+  tile[ty][tx] = in[ty * 32 + tx];
+  __syncthreads();
+  out[ty * 32 + tx] = tile[tx][ty];
+}
+```
+
+Both versions are correct. Only the conflict card changes: 32-way, then
+conflict-free.

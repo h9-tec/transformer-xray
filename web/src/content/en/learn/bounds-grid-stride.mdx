@@ -1,0 +1,42 @@
+# Bounds and grid-stride loops
+
+The grid you launch and the data you have are two different numbers. A kernel
+that assumes they match is correct for exactly one input size.
+
+<Junior>
+  Two problems appear the moment sizes differ. If the grid is **bigger** than
+  the data, the last threads point past the end of the array: a write there
+  corrupts whatever lives next to your buffer, or crashes. The fix is a bounds
+  check, `if (i < n)`.
+
+  If the grid is **smaller** than the data, some elements are never touched.
+  The fix is to let each thread loop: handle element `i`, then `i + total`,
+  then `i + 2·total`, until you run off the end. `total` is the number of
+  threads in the whole grid, `gridDim.x * blockDim.x`. This is the
+  **grid-stride loop**, and `residual_add` in the real model is written this
+  way so one launch configuration works for any tensor size.
+</Junior>
+
+<Senior>
+  A grid-stride loop decouples launch geometry from problem size. You pick a
+  grid that fills the machine (a few blocks per SM) and the loop does the
+  rest; the per-element cost is one compare and one add. It also keeps
+  accesses coalesced: in every iteration, consecutive lanes still touch
+  consecutive elements, because the stride is added to all of them equally.
+
+  Out-of-bounds writes are not detected by the hardware. On a real GPU they
+  silently corrupt memory, and the failure shows up later in an unrelated
+  kernel. The simulator checks every index against the buffer size and stops
+  at the first offender, naming the thread, so you learn the habit where the
+  mistake is still visible.
+</Senior>
+
+```cuda
+__global__ void residual_add(const float* a, const float* b, float* out, int n) {
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x)
+    out[i] = a[i] + b[i];
+}
+```
+
+The exercise launches 1024 threads over 5000 elements. The starter covers the
+first 1024 and stops; the reference disagrees from element 1024 on.

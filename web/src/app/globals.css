@@ -251,3 +251,16 @@ body {
   overflow-y: hidden;
   padding-block: 0.25rem;
 }
+
+/* ─── Lesson prose (concept MDX) ─── */
+.prose-lesson { text-align: start; }
+.prose-lesson h1 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; font-size: 1.75rem; margin: 0 0 0.6em; }
+.prose-lesson h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; margin: 1.4em 0 0.5em; }
+.prose-lesson p, .prose-lesson li { font-size: 1.0625rem; line-height: 1.65; color: #cfd6e6; }
+.prose-lesson p { margin: 0 0 0.9em; }
+.prose-lesson ul { padding-inline-start: 1.2em; margin: 0 0 1em; list-style: disc; }
+.prose-lesson strong { color: var(--color-ink); font-weight: 600; }
+.prose-lesson code { font-family: var(--font-mono); font-size: 0.88em; color: var(--color-fwd); background: rgba(116, 199, 255, 0.08); padding: 0.05em 0.4em; border-radius: 5px; }
+.prose-lesson .junior-only, .prose-lesson .senior-only { margin: 0 0 1em; }
+.prose-lesson .senior-only { border-inline-start: 2px solid rgba(116, 199, 255, 0.35); padding-inline-start: 1rem; }
+.prose-lesson .katex-display { margin: 1em 0; overflow-x: auto; }
