@@ -18,7 +18,9 @@ kernels/build/
 .DS_Store
 *.log
 web/public/engine.worker.*.js
+web/public/cuda.worker.*.js
 web/src/engine/worker/worker-url.ts
+web/src/cuda/worker/worker-url.ts
 
 # Local tool state
 .playwright-mcp/
