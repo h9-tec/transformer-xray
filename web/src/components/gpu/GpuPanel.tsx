@@ -3,6 +3,7 @@
  * and measured timings where a results file was committed. Server component
  * — sources are read at build time. */
 
+import { SHADERS, STAGE_SHADER } from '@/engine/gpu/shaders';
 import { readBenchResults, readKernel } from '@/lib/kernels';
 import { CudaCode } from './CudaCode';
 import { GridBlockViz } from './GridBlockViz';
@@ -100,6 +101,16 @@ export function GpuPanel({ stage }: { stage: string }) {
           )}
         </div>
         <CudaCode code={kernel.code} />
+        {STAGE_SHADER[stage] && (
+          <details className="rounded-xl border border-line bg-bg">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
+              WGSL twin: {STAGE_SHADER[stage]} (what runs when you pick "your GPU")
+            </summary>
+            <pre className="nums overflow-x-auto border-t border-line p-4 text-xs leading-relaxed text-muted" dir="ltr">
+              {SHADERS[STAGE_SHADER[stage]].trim()}
+            </pre>
+          </details>
+        )}
       </div>
     </div>
   );

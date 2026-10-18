@@ -153,5 +153,14 @@
     "startHere": "Start here",
     "subsetLink": "What CUDA the in-browser GPU accepts",
     "crash": "The kernel runner stopped unexpectedly. Run again."
+  },
+  "backend": {
+    "runOn": "Run on",
+    "yourGpu": "your GPU",
+    "perStep": "per token, WebGPU",
+    "unavailable": "your GPU is unavailable",
+    "fellBack": "back on the CPU",
+    "checking": "checking for a WebGPU adapter…",
+    "cpuNote": "TypeScript engine in a worker. Switch to your GPU for the WebGPU twins of the CUDA kernels."
   }
 }

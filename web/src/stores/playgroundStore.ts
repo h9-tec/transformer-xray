@@ -33,6 +33,8 @@ interface PlaygroundState {
 
   set: (p: Partial<PlaygroundState>) => void;
   select: (i: number | null) => void;
+  /** last per-token wall time reported by the GPU path */
+  lastMs: number | null;
   generate: () => Promise<void>;
 }
 
@@ -48,6 +50,7 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
   selectedStep: null,
   error: null,
 
+  lastMs: null,
   set: (p) => set(p),
   select: (i) => set({ selectedStep: i }),
 
@@ -65,10 +68,11 @@ export const usePlaygroundStore = create<PlaygroundState>((set, get) => ({
           topK: s.topK,
           seed: s.greedy ? null : s.seed,
         },
-        ({ index, token, logits }) => {
+        ({ index, token, logits, ms }) => {
           logitsRegistry[index] = logits;
           set((prev) => ({
             steps: [...prev.steps, { token, temperature: s.temperature, topK: s.topK }],
+            lastMs: ms ?? prev.lastMs,
           }));
         },
       );

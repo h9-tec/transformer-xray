@@ -5,6 +5,7 @@
 
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { BackendSwitch } from '@/components/BackendSwitch';
 import { useModelStore } from '@/stores/modelStore';
 import { stepLogits, usePlaygroundStore } from '@/stores/playgroundStore';
 import { LogitsBars } from './LogitsBars';
@@ -18,6 +19,7 @@ export function PlaygroundView() {
   const steps = usePlaygroundStore((s) => s.steps);
   const selected = usePlaygroundStore((s) => s.selectedStep);
   const greedy = usePlaygroundStore((s) => s.greedy);
+  const lastMs = usePlaygroundStore((s) => s.lastMs);
 
   useEffect(() => {
     void load();
@@ -48,6 +50,7 @@ export function PlaygroundView() {
         <aside className="space-y-5">
           <PromptInput chars={chars} />
           <SamplingControls />
+          <BackendSwitch lastMs={lastMs} />
           <p className="nums text-xs text-faint">
             {cfgJson.n_params.toLocaleString()} params · val loss {cfgJson.val_loss.toFixed(3)} ·
             100% live in your browser

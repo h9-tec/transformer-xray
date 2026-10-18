@@ -97,7 +97,7 @@ test('GPU panel is collapsed under the hood by default', async ({ page }) => {
   const details = page.locator('details', { hasText: 'Under the hood' });
   await expect(details).toHaveCount(1);
   await expect(details).not.toHaveAttribute('open', '');
-  await details.locator('summary').click();
+  await details.locator('summary').first().click();
   await expect(page.getByText('kernels/03_matmul.cu')).toBeVisible();
 });
 
@@ -105,4 +105,18 @@ test('/ar renders no raw message keys', async ({ page }) => {
   await page.goto('ar/');
   const text = await page.locator('body').innerText();
   expect(text).not.toMatch(/\b(home|nav|learn|inspect)\.[a-zA-Z]+/);
+});
+
+test('backend switch: CPU selected, your GPU disabled with a reason where WebGPU is missing', async ({ page }) => {
+  await page.goto('en/playground/');
+  await page.waitForFunction(() => window.__stores?.model.getState().status === 'ready', { timeout: 60_000 });
+  const cpu = page.getByRole('button', { name: /^CPU$/ });
+  const gpu = page.getByRole('button', { name: /your GPU/i });
+  await expect(cpu).toHaveAttribute('aria-pressed', 'true');
+  await expect(gpu).toBeVisible();
+  const hasWebGpu = await page.evaluate(() => 'gpu' in navigator);
+  if (!hasWebGpu) {
+    await expect(gpu).toBeDisabled();
+    await expect(page.getByTestId('backend-reason')).not.toBeEmpty();
+  }
 });

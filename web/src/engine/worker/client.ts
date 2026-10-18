@@ -10,12 +10,15 @@ import type {
   WorkerResponse,
 } from './protocol';
 import { withBase } from '@/lib/basePath';
+import type { BackendName, BackendStatus } from '../backend';
 import { WORKER_URL } from './worker-url';
 
 export interface TokenEvent {
   index: number;
   token: number;
   logits: Float32Array;
+  /** present on the GPU path: wall time of the step in ms (WebGPU) */
+  ms?: number;
 }
 
 export interface ParamGrad {
@@ -94,12 +97,23 @@ export class EngineClient {
     this.pending.clear();
   }
 
+  /** Unsolicited backend changes (device lost) arrive with id 0. */
+  onBackendChange: ((s: BackendStatus) => void) | null = null;
+
   private dispatch(msg: WorkerResponse): void {
+    if (msg.type === 'backend' && msg.id === 0) {
+      this.onBackendChange?.({ active: msg.active, adapter: msg.adapter, reason: msg.reason });
+      return;
+    }
     const p = this.pending.get(msg.id);
     if (!p) return;
     switch (msg.type) {
       case 'token':
-        p.onToken?.({ index: msg.index, token: msg.token, logits: new Float32Array(msg.logits) });
+        p.onToken?.({ index: msg.index, token: msg.token, logits: new Float32Array(msg.logits), ms: msg.ms });
+        break;
+      case 'backend':
+        this.pending.delete(msg.id);
+        p.resolve(msg);
         break;
       case 'trainProgress':
         p.onProgress?.({ step: msg.step, loss: msg.loss, sample: msg.sample });
@@ -144,6 +158,11 @@ export class EngineClient {
       [weightsBuffer],
     );
     return { cfgJson: r.cfgJson, chars: r.chars };
+  }
+
+  async setBackend(backend: BackendName): Promise<BackendStatus> {
+    const r = await this.send<WorkerResponse & { type: 'backend' }>({ type: 'setBackend', backend });
+    return { active: r.active, adapter: r.adapter, reason: r.reason };
   }
 
   async generate(params: GenerateParams, onToken: (t: TokenEvent) => void): Promise<string> {

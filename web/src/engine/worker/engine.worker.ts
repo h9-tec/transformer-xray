@@ -4,6 +4,10 @@
  * the live one if it exists, so the inspectors can x-ray a model mid-training. */
 
 import { adamwInit, type AdamWState } from '../adamw';
+import { backendAfterLoss, chooseBackend, type BackendName, type BackendStatus } from '../backend';
+import { getGpu, resetGpu, type Gpu } from '../gpu/device';
+import { gpuGenerate } from '../gpu/forward';
+import { uploadModel, type GpuModel } from '../gpu/model';
 import { forward, lossBackward, toMutableParams, trainStep, type Weights } from '../gpt';
 import { initWeights } from '../init';
 import { generateKV } from '../kvcache';
@@ -25,6 +29,32 @@ let trainStepCount = 0;
 let stopRequested = false;
 let training = false;
 
+let gpu: Gpu | null = null;
+let gpuModel: GpuModel | null = null;
+let backend: BackendStatus = { active: 'cpu' };
+
+async function handleSetBackend(id: number, requested: BackendName): Promise<void> {
+  if (!cfg) throw new Error('worker not initialized');
+  if (requested === 'gpu' && !gpu) {
+    const g = await getGpu();
+    if (g) {
+      gpu = g;
+      void g.lost.then((info) => {
+        gpu = null;
+        gpuModel = null;
+        resetGpu();
+        backend = backendAfterLoss(info.message || info.reason || 'unknown');
+        post({ id: 0, type: 'backend', ...backend });
+      });
+    }
+  }
+  backend = chooseBackend(requested, gpu ? { ok: true, adapter: gpu.adapterInfo } : { ok: false, reason: 'navigator.gpu is missing or no adapter was granted' });
+  // the GPU copy stays resident across CPU/GPU switches; it is rebuilt on
+  // training resets and dropped only when the device is lost
+  if (backend.active === 'gpu' && gpu && !gpuModel) gpuModel = uploadModel(gpu, active(), cfg);
+  post({ id, type: 'backend', ...backend });
+}
+
 function post(msg: WorkerResponse, transfer: Transferable[] = []): void {
   (self as unknown as Worker).postMessage(msg, transfer);
 }
@@ -42,10 +72,26 @@ function handleInit(id: number, cfgJson: ModelConfigJson, chars: string, buf: Ar
   post({ id, type: 'ready', cfgJson, chars });
 }
 
-function handleGenerate(id: number, p: WorkerRequest & { type: 'generate' }): void {
+async function handleGenerate(id: number, p: WorkerRequest & { type: 'generate' }): Promise<void> {
   if (!cfg || !tokenizer) throw new Error('worker not initialized');
   const { prompt, maxNewTokens, temperature, topK, seed } = p.params;
   let index = 0;
+  if (backend.active === 'gpu' && gpu && gpuModel) {
+    const outGpu = await gpuGenerate(
+      gpu,
+      gpuModel,
+      cfg,
+      tokenizer.encode(prompt),
+      maxNewTokens,
+      { temperature, topK, rng: seed === null ? null : mulberry32(seed) },
+      ({ token, logits, ms }) => {
+        const buf = logits.buffer as ArrayBuffer;
+        post({ id, type: 'token', index: index++, token, logits: buf, ms }, [buf]);
+      },
+    );
+    post({ id, type: 'generated', text: tokenizer.decode(outGpu) });
+    return;
+  }
   const out = generateKV(
     active(),
     cfg,
@@ -168,15 +214,31 @@ async function handleTrainRun(id: number, p: TrainParams): Promise<void> {
   post({ id, type: 'trainDone', step: trainStepCount });
 }
 
-self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
+// Handlers are async (the GPU path awaits readbacks), so requests are run
+// one at a time: a backend switch can never land in the middle of a
+// generation that is still using the GPU buffers.
+let chain: Promise<void> = Promise.resolve();
+
+self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   const msg = e.data;
+  if (msg.type === 'trainStop') {
+    stopRequested = true; // must not queue behind the running training loop
+    return;
+  }
+  chain = chain.then(() => handle(msg)).catch(() => undefined);
+};
+
+async function handle(msg: WorkerRequest): Promise<void> {
   try {
     switch (msg.type) {
       case 'init':
         handleInit(msg.id, msg.cfgJson, msg.chars, msg.weightsBuffer);
         break;
       case 'generate':
-        handleGenerate(msg.id, msg);
+        await handleGenerate(msg.id, msg);
+        break;
+      case 'setBackend':
+        await handleSetBackend(msg.id, msg.backend);
         break;
       case 'trace':
         handleTrace(msg.id, msg.text, msg.targets);
@@ -194,9 +256,13 @@ self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
         trainParams = null;
         adamState = null;
         trainStepCount = 0;
+        if (gpu && gpuModel && cfg) {
+          gpuModel.destroy();
+          gpuModel = uploadModel(gpu, active(), cfg);
+        }
         break;
     }
   } catch (err) {
     post({ id: msg.id, type: 'error', message: err instanceof Error ? err.message : String(err) });
   }
-};
+}

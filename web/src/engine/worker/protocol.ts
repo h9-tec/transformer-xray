@@ -1,6 +1,7 @@
 /** Typed messages across the worker boundary. Tensor payloads move as
  * transferable ArrayBuffers — zero copies. */
 
+import type { BackendName, BackendStatus } from '../backend';
 import type { Costs, OpKind, Phase, Stats, TensorRefIn } from '../tape';
 import type { ModelConfigJson } from '../weights';
 
@@ -41,7 +42,8 @@ export type WorkerRequest =
     }
   | { id: number; type: 'trainRun'; params: TrainParams }
   | { id: number; type: 'trainStop' }
-  | { id: number; type: 'trainReset' };
+  | { id: number; type: 'trainReset' }
+  | { id: number; type: 'setBackend'; backend: BackendName };
 
 /** TraceNode with its Float32Array detached into a transferable buffer. */
 export interface WireNode {
@@ -75,6 +77,8 @@ export type WorkerResponse =
       token: number;
       /** raw last-position logits (pre-temperature), transferable */
       logits: ArrayBuffer;
+      /** wall time of this step on the GPU path (WebGPU), when applicable */
+      ms?: number;
     }
   | { id: number; type: 'generated'; text: string }
   | {
@@ -90,4 +94,6 @@ export type WorkerResponse =
   | { id: number; type: 'trainReady'; fromScratch: boolean }
   | { id: number; type: 'trainProgress'; step: number; loss: number; sample?: string }
   | { id: number; type: 'trainDone'; step: number }
+  /** id 0 = unsolicited (device lost) */
+  | ({ id: number; type: 'backend' } & BackendStatus)
   | { id: number; type: 'error'; message: string };
