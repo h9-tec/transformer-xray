@@ -1,49 +1,110 @@
 @import 'tailwindcss';
 
 /* ─── Design tokens ────────────────────────────────────────────────────
-   Aesthetic: lab instrument / oscilloscope. Deep blue-black chassis,
-   hairline grid, phosphor-glow accents. Color encodes the curriculum:
-   green = forward pass, magenta = backward pass, periwinkle = update,
-   amber = interactive. */
+   Aesthetic: premium dark instrument. Deep ink ground, two glows that mean
+   something: copper = compute (threads, warps, FLOPs, interactive, CTA),
+   ice = memory (bytes, sectors, bandwidth, the forward pass). Rose = the
+   backward pass, violet = optimizer updates. Glow appears in exactly three
+   places: the hero instrument, lit lesson tiles, primary buttons. */
 
 @theme {
-  --color-bg: #0c0d12;
-  --color-surface: #12141b;
-  --color-raised: #191c26;
-  --color-line: #262a38;
-  --color-ink: #e7eaf3;
-  --color-muted: #8e96aa;
-  --color-faint: #5c6377;
+  --color-bg: #06080f;
+  --color-surface: #0b0f1a;
+  --color-raised: #121829;
+  --color-line: rgba(160, 180, 230, 0.12);
+  --color-ink: #e8ecf7;
+  --color-muted: #9aa5bf;
+  --color-faint: #5f6a85;
 
-  --color-accent: #ffb454; /* amber — interactive, highlights */
-  --color-fwd: #3ddc97; /* phosphor green — forward pass */
-  --color-bwd: #ff6ac1; /* magenta — backward pass / gradients */
-  --color-update: #7aa2ff; /* periwinkle — optimizer / weight updates */
-  --color-danger: #ff5c5c;
+  --color-accent: #ff9a4d; /* copper — compute, interactive, CTA */
+  --color-accent-deep: #ff6a1f;
+  --color-fwd: #74c7ff; /* ice — memory, data, forward pass */
+  --color-fwd-deep: #2f9bff;
+  --color-bwd: #ff7ab6; /* rose — backward pass / gradients */
+  --color-update: #b59bff; /* violet — optimizer / weight updates */
+  --color-ok: #5ee6a8;
+  --color-danger: #ff6b7a;
 }
 
 @theme inline {
-  --font-display: var(--font-bricolage), sans-serif;
-  --font-body: var(--font-plex), var(--font-plex-arabic), sans-serif;
-  --font-mono: var(--font-jetbrains), monospace;
+  --font-display: var(--font-syne), 'Avenir Next', 'Segoe UI', sans-serif;
+  --font-body: var(--font-instrument), var(--font-plex-arabic), 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), 'SFMono-Regular', Menlo, Consolas, monospace;
   --font-arabic: var(--font-plex-arabic), sans-serif;
 }
 
 /* ─── Base ─── */
 
 body {
-  background:
-    radial-gradient(1200px 600px at 70% -10%, rgb(122 162 255 / 0.06), transparent 60%),
-    radial-gradient(900px 500px at 0% 100%, rgb(61 220 151 / 0.04), transparent 55%),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-body);
   min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
 }
 
 :lang(ar) body {
   font-family: var(--font-arabic);
   line-height: 1.9; /* Arabic needs more breathing room than Latin */
+}
+
+/* ─── Identity utilities (the only places glow is allowed) ─── */
+
+.glow-accent {
+  box-shadow: 0 0 24px rgba(255, 154, 77, 0.35);
+}
+.glow-fwd {
+  box-shadow: 0 0 24px rgba(116, 199, 255, 0.3);
+}
+.panel {
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  border-radius: 18px;
+}
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+  color: #1a0d04;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-deep));
+  box-shadow: 0 8px 30px rgba(255, 122, 40, 0.35);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 38px rgba(255, 122, 40, 0.5);
+}
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1.4rem;
+  border-radius: 999px;
+  font-weight: 600;
+  border: 1px solid var(--color-line);
+  background: var(--color-raised);
+  transition: transform 0.15s ease;
+}
+.btn-ghost:hover {
+  transform: translateY(-1px);
+}
+:focus-visible {
+  outline: 2px solid var(--color-fwd);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .btn-primary,
+  .btn-ghost {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 ::selection {

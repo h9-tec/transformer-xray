@@ -1,25 +1,21 @@
 import type { Metadata } from 'next';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
-import {
-  Bricolage_Grotesque,
-  IBM_Plex_Sans,
-  IBM_Plex_Sans_Arabic,
-  JetBrains_Mono,
-} from 'next/font/google';
+import { IBM_Plex_Sans_Arabic, Instrument_Sans, JetBrains_Mono, Syne } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import 'katex/dist/katex.min.css';
 import '../globals.css';
 
-const display = Bricolage_Grotesque({
+const display = Syne({
   subsets: ['latin'],
-  variable: '--font-bricolage',
+  weight: ['500', '700', '800'],
+  variable: '--font-syne',
 });
-const body = IBM_Plex_Sans({
+const body = Instrument_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
-  variable: '--font-plex',
+  variable: '--font-instrument',
 });
 const mono = JetBrains_Mono({
   subsets: ['latin'],

@@ -91,3 +91,12 @@ test('/ar renders RTL with Arabic chrome', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   await expect(page.getByText('اجعله يكتب')).toBeVisible();
 });
+
+test('new identity: display type and copper accent are live', async ({ page }) => {
+  await page.goto('en/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCSS('font-family', /Syne/);
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim(),
+  );
+  expect(accent).toBe('#ff9a4d');
+});
