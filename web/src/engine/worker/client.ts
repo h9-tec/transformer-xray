@@ -40,6 +40,8 @@ export interface TrainProgress {
   step: number;
   loss: number;
   sample?: string;
+  /** GPU path: wall time of the step in ms */
+  ms?: number;
 }
 
 /** Omit distributed over the request union (plain Omit collapses unions). */
@@ -116,7 +118,7 @@ export class EngineClient {
         p.resolve(msg);
         break;
       case 'trainProgress':
-        p.onProgress?.({ step: msg.step, loss: msg.loss, sample: msg.sample });
+        p.onProgress?.({ step: msg.step, loss: msg.loss, sample: msg.sample, ms: msg.ms });
         break;
       case 'ready':
       case 'generated':

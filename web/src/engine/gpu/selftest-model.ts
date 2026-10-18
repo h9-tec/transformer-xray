@@ -1,14 +1,17 @@
 /** Model-level parity: the GPU forward pass against the CPU engine on the
- * real checkpoint (the e2e smoke prompt), and later one training step. */
+ * real checkpoint, and one training step (params + loss) on the same batch. */
 
-import { forward } from '@/engine/gpt';
+import { adamwInit } from '@/engine/adamw';
+import { forward, toMutableParams, trainStep } from '@/engine/gpt';
 import { loadModel } from '@/lib/loadModel';
 import type { Gpu } from './device';
 import { gpuForward } from './forward';
 import { uploadModel } from './model';
 import { maxAbsDiff, type GpuReport } from './selftest';
+import { GpuTrainer } from './train';
 
 const PROMPT = 'ROMEO:\nFor nothing marry, ';
+const HP = { lr: 1e-3, beta1: 0.9, beta2: 0.95, eps: 1e-8, weightDecay: 0.1 };
 
 export async function extendReport(gpu: Gpu, report: GpuReport, level: 'forward' | 'train'): Promise<GpuReport> {
   const m = await loadModel();
@@ -22,14 +25,40 @@ export async function extendReport(gpu: Gpu, report: GpuReport, level: 'forward'
     const V = m.cfg.vocabSize;
     let match = true;
     for (let t = 0; t < ids.length && match; t++) {
-      const a = argmax(logits.subarray(t * V, (t + 1) * V));
-      const b = argmax(cpu.subarray(t * V, (t + 1) * V));
-      if (a !== b) match = false;
+      if (argmax(logits.subarray(t * V, (t + 1) * V)) !== argmax(cpu.subarray(t * V, (t + 1) * V))) match = false;
     }
     report.argmaxMatch = match;
-    if (level === 'train') report.reason = 'train-level parity is not implemented yet';
   } finally {
     model.destroy();
+  }
+  if (level !== 'train') return report;
+
+  // one step, identical init and batch, on both engines
+  const text = 'First Citizen:\nBefore we proceed any further, hear me speak.\n\nAll:\nSpeak, speak.\n';
+  const seq = m.tokenizer.encode(text);
+  const T = 48;
+  const x = seq.subarray(0, T);
+  const y = seq.subarray(1, T + 1);
+  const cpuParams = toMutableParams(m.weights);
+  const res = trainStep(cpuParams, m.cfg, x, y, adamwInit(), HP);
+  const gpuModel = uploadModel(gpu, toMutableParams(m.weights), m.cfg);
+  const trainer = new GpuTrainer(gpu, gpuModel, m.cfg, HP);
+  try {
+    const t0 = performance.now();
+    const { loss } = await trainer.step(x, y);
+    const after = await gpuModel.download();
+    let worst = 0;
+    for (const [name, t] of cpuParams) {
+      const d = maxAbsDiff(after.get(name)!.data, t.data);
+      if (Number.isNaN(d) || d > worst) worst = d;
+    }
+    report.trainMaxDiff = worst;
+    report.lossGpu = loss;
+    report.lossCpu = res.loss;
+    report.kernels = { ...report.kernels, train_step: { maxDiff: worst, ms: performance.now() - t0 } };
+  } finally {
+    trainer.destroy();
+    gpuModel.destroy();
   }
   return report;
 }

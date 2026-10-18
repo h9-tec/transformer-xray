@@ -94,6 +94,9 @@ export class Buf {
   }
 }
 
+/** Uniform buffers created since the last submit; freed once that work is done. */
+const pendingUniforms: GPUBuffer[] = [];
+
 /** Uniform params: packed as 32-bit words (u32 or f32 by position). */
 export function uniform(gpu: Gpu, words: (number | { f: number })[]): GPUBuffer {
   const u = new Uint32Array(Math.max(4, Math.ceil(words.length / 4) * 4));
@@ -104,6 +107,7 @@ export function uniform(gpu: Gpu, words: (number | { f: number })[]): GPUBuffer 
   });
   const b = gpu.device.createBuffer({ size: u.byteLength, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
   gpu.device.queue.writeBuffer(b, 0, u);
+  pendingUniforms.push(b);
   return b;
 }
 
@@ -141,5 +145,7 @@ export function dispatch(
 
 export async function submitAndWait(gpu: Gpu, enc: GPUCommandEncoder): Promise<void> {
   gpu.device.queue.submit([enc.finish()]);
+  const mine = pendingUniforms.splice(0, pendingUniforms.length);
   await gpu.device.queue.onSubmittedWorkDone();
+  for (const b of mine) b.destroy();
 }

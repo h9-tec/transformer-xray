@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
+import { BackendSwitch } from '@/components/BackendSwitch';
 import { useModelStore } from '@/stores/modelStore';
 import { useTrainStore } from '@/stores/trainStore';
 import { LossChart } from './LossChart';
@@ -23,6 +24,7 @@ export function TrainView() {
 
   return (
     <div className="space-y-6">
+      <BackendSwitch lastMs={s.lastMs} />
       <div className="panel flex flex-wrap items-center gap-4 p-4">
         <div role="radiogroup" aria-label={t('source')} className="flex gap-1">
           {(['scratch', 'checkpoint'] as const).map((src) => (
@@ -96,7 +98,7 @@ export function TrainView() {
 
       <div className="nums flex flex-wrap gap-6 text-sm text-muted">
         <span>
-          {t('step')} <span className="text-ink">{s.step}</span>
+          {t('step')} <span className="text-ink" data-testid="train-step">{s.step}</span>
         </span>
         {s.lossHistory.length > 0 && (
           <span>

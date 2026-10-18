@@ -8,6 +8,7 @@ import { backendAfterLoss, chooseBackend, type BackendName, type BackendStatus }
 import { getGpu, resetGpu, type Gpu } from '../gpu/device';
 import { gpuGenerate } from '../gpu/forward';
 import { uploadModel, type GpuModel } from '../gpu/model';
+import { GpuTrainer } from '../gpu/train';
 import { forward, lossBackward, toMutableParams, trainStep, type Weights } from '../gpt';
 import { initWeights } from '../init';
 import { generateKV } from '../kvcache';
@@ -31,6 +32,16 @@ let training = false;
 
 let gpu: Gpu | null = null;
 let gpuModel: GpuModel | null = null;
+let gpuTrainer: GpuTrainer | null = null;
+
+/** Live params for trace/generate: GPU-trained weights are downloaded first. */
+async function liveWeights(): Promise<Weights> {
+  if (gpuTrainer) {
+    trainParams = await gpuTrainer.download();
+    return trainParams;
+  }
+  return active();
+}
 let backend: BackendStatus = { active: 'cpu' };
 
 async function handleSetBackend(id: number, requested: BackendName): Promise<void> {
@@ -128,9 +139,9 @@ function toWire(n: TraceNode): { node: WireNode; transfer: ArrayBuffer | null } 
   };
 }
 
-function handleTrace(id: number, text: string, targets?: string): void {
+async function handleTrace(id: number, text: string, targets?: string): Promise<void> {
   if (!cfg || !tokenizer) throw new Error('worker not initialized');
-  const weights = active();
+  const weights = await liveWeights();
   const tape = new Tape();
   const ctx = forward(weights, cfg, tokenizer.encode(text), tape);
   let loss: number | undefined;
@@ -176,6 +187,13 @@ function handleTrainInit(
   adamState = adamwInit();
   corpusIds = tokenizer.encode(corpus);
   trainStepCount = 0;
+  gpuTrainer?.destroy();
+  gpuTrainer = null;
+  if (backend.active === 'gpu' && gpu) {
+    gpuModel?.destroy();
+    gpuModel = uploadModel(gpu, trainParams, cfg);
+    gpuTrainer = new GpuTrainer(gpu, gpuModel, cfg, { lr: 1e-3, beta1: 0.9, beta2: 0.95, eps: 1e-8, weightDecay: 0.1 });
+  }
   post({ id, type: 'trainReady', fromScratch });
 }
 
@@ -194,19 +212,28 @@ async function handleTrainRun(id: number, p: TrainParams): Promise<void> {
     const start = Math.floor(trainRng() * (corpusIds.length - T - 1));
     const x = corpusIds.subarray(start, start + T);
     const y = corpusIds.subarray(start + 1, start + T + 1);
-    const res = trainStep(trainParams, cfg, x, y, adamState, hp);
+    let loss: number;
+    let stepMs: number | undefined;
+    if (gpuTrainer && gpu && gpuModel) {
+      gpuTrainer.hp.lr = p.lr;
+      const r = await gpuTrainer.step(x, y);
+      loss = r.loss;
+      stepMs = r.ms;
+    } else {
+      loss = trainStep(trainParams, cfg, x, y, adamState, hp).loss;
+    }
     trainStepCount++;
 
     let sample: string | undefined;
     if (p.sampleEvery > 0 && trainStepCount % p.sampleEvery === 0) {
-      const out = generateKV(trainParams, cfg, tokenizer.encode('\n'), 80, {
-        temperature: 0.8,
-        topK: 40,
-        rng: mulberry32(trainStepCount),
-      });
+      const sampleOpts = { temperature: 0.8, topK: 40, rng: mulberry32(trainStepCount) };
+      const out =
+        gpuTrainer && gpu && gpuModel
+          ? await gpuGenerate(gpu, gpuModel, cfg, tokenizer.encode('\n'), 80, sampleOpts)
+          : generateKV(trainParams, cfg, tokenizer.encode('\n'), 80, sampleOpts);
       sample = tokenizer.decode(out);
     }
-    post({ id, type: 'trainProgress', step: trainStepCount, loss: res.loss, sample });
+    post({ id, type: 'trainProgress', step: trainStepCount, loss, sample, ms: stepMs });
     // Yield to the event loop so trainStop can interleave.
     await new Promise((r) => setTimeout(r, 0));
   }
@@ -241,7 +268,7 @@ async function handle(msg: WorkerRequest): Promise<void> {
         await handleSetBackend(msg.id, msg.backend);
         break;
       case 'trace':
-        handleTrace(msg.id, msg.text, msg.targets);
+        await handleTrace(msg.id, msg.text, msg.targets);
         break;
       case 'trainInit':
         handleTrainInit(msg.id, msg.fromScratch, msg.seed, msg.corpus);
@@ -256,6 +283,8 @@ async function handle(msg: WorkerRequest): Promise<void> {
         trainParams = null;
         adamState = null;
         trainStepCount = 0;
+        gpuTrainer?.destroy();
+        gpuTrainer = null;
         if (gpu && gpuModel && cfg) {
           gpuModel.destroy();
           gpuModel = uploadModel(gpu, active(), cfg);

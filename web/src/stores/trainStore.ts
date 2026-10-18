@@ -19,6 +19,8 @@ interface TrainState {
   step: number;
   lossHistory: number[];
   sample: string;
+  /** GPU path: last step time */
+  lastMs: number | null;
   error: string | null;
 
   set: (p: Partial<Pick<TrainState, 'source' | 'lr' | 'seqLen'>>) => void;
@@ -44,6 +46,7 @@ export const useTrainStore = create<TrainState>((set, get) => ({
   step: 0,
   lossHistory: [],
   sample: '',
+  lastMs: null,
   error: null,
 
   set: (p) => set(p),
@@ -60,10 +63,11 @@ export const useTrainStore = create<TrainState>((set, get) => ({
       }
       await engine().trainRun(
         { steps: 400, seqLen: get().seqLen, lr: get().lr, sampleEvery: 25 },
-        ({ step, loss, sample }) => {
+        ({ step, loss, sample, ms }) => {
           set((prev) => ({
             step,
             lossHistory: [...prev.lossHistory, loss],
+            lastMs: ms ?? prev.lastMs,
             ...(sample !== undefined ? { sample } : {}),
           }));
         },

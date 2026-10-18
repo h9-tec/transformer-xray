@@ -92,7 +92,7 @@ export type WorkerResponse =
       trainedParams: boolean;
     }
   | { id: number; type: 'trainReady'; fromScratch: boolean }
-  | { id: number; type: 'trainProgress'; step: number; loss: number; sample?: string }
+  | { id: number; type: 'trainProgress'; step: number; loss: number; sample?: string; ms?: number }
   | { id: number; type: 'trainDone'; step: number }
   /** id 0 = unsolicited (device lost) */
   | ({ id: number; type: 'backend' } & BackendStatus)
