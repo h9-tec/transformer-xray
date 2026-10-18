@@ -24,6 +24,7 @@ Nothing is canned. That claim is enforced by tests.
 | generation matches | greedy decode reproduces PyTorch token-for-token |
 | the CUDA kernels are real | `kernels/` compiles; `make bench` verifies vs CPU at the model's shapes |
 | the in-browser GPU runs real CUDA | the same five `.cu` files run on the interpreter and match the engine (`< 1e-5`) |
+| the WebGPU path is the same model | forward `< 1e-3`, one AdamW step `< 5e-3`, seeded text identical (`web/e2e/gpu/`) |
 
 ## Layout
 
@@ -57,7 +58,14 @@ To test the Pages layout locally:
 
 ```bash
 cd web && NEXT_PUBLIC_BASE_PATH=/transformer-xray npx pnpm build
-BASE_PATH=/transformer-xray npx pnpm exec playwright test
+BASE_PATH=/transformer-xray npx pnpm exec playwright test --project default
+```
+
+WebGPU parity runs only locally, in full Chromium with a real adapter (CI's headless
+shell has none, so CI runs `--project default`):
+
+```bash
+cd web && npx pnpm build && npx pnpm exec playwright test --project=gpu
 ```
 
 ## What's inside
@@ -76,6 +84,12 @@ BASE_PATH=/transformer-xray npx pnpm exec playwright test
   barriers, shuffles, atomics and shared memory, and reports sectors per
   request, bank conflicts, divergence and data races. All five `kernels/*.cu`
   files run on it unchanged and match the TS engine (`web/tests/cuda/fixtures.test.ts`).
+- **Run on your GPU** — the playground and the trainer have a "Run on: CPU · your GPU"
+  switch. The GPU path is a WebGPU twin of the engine (`web/src/engine/gpu/`): one WGSL
+  shader per CUDA kernel, the same op order as `engine/gpt.ts`, parity-tested in the
+  browser (`/en/debug/gpu/`, Playwright project `gpu`) — forward logits `< 1e-3`, one
+  AdamW step `< 5e-3` on every parameter, seeded text identical to the CPU path. No
+  adapter → the switch is disabled with the reason and nothing else changes.
 - **GPU panels** — per-op CUDA source, thread-block tiling diagrams driven by the
   live shapes, naive-vs-tiled traffic arithmetic, and timings measured on real
   hardware (labeled), never simulated.

@@ -1,6 +1,6 @@
 # Transformer X-Ray → full CUDA course, WebGPU engine, GitHub Pages
 
-Date: 2026-10-18 · Status: approved; amended 2026-10-18 with §4.0 (visual identity) after the user rejected the deployed look
+Date: 2026-10-18 · Status: approved; amended with §4.0 (visual identity). Phases 0, R, 1, 2 shipped 2026-10-18; Phase 3 implemented 2026-10-18 (traces stay on the CPU engine; GPU serves generation and training).
 
 ## 1. Goal
 
