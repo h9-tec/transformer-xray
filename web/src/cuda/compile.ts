@@ -137,7 +137,7 @@ class Compiler {
     const c = w.ctx;
     c.warpInstructions++;
     c.ops += popcount(w.active);
-    c.hooks.onWarpInstruction(w.active);
+    c.hooks.onWarpInstruction(w.active, w.valid);
     if (c.ops > c.budget) {
       let lane = 0;
       while (lane < LANES && !has(w.active, lane)) lane++;

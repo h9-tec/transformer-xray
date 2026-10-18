@@ -42,7 +42,7 @@ export function popcount(m: number): number {
 /** What instrument.ts observes. The runtime calls these; a no-op
  * implementation is used when instrumentation is off. */
 export interface Hooks {
-  onWarpInstruction(active: number): void;
+  onWarpInstruction(active: number, valid: number): void;
   onGlobal(kind: 'load' | 'store' | 'atomic', buf: DeviceBuffer, byteAddrs: number[], line: number, threads: ThreadId[]): void;
   onShared(kind: 'load' | 'store' | 'atomic', byteAddrs: number[], line: number, threads: ThreadId[]): void;
   onBarrier(): void;
