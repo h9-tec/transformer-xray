@@ -19,3 +19,8 @@ kernels/build/
 *.log
 web/public/engine.worker.*.js
 web/src/engine/worker/worker-url.ts
+
+# Local tool state
+.playwright-mcp/
+.serena/
+.superpowers/
