@@ -50,7 +50,7 @@ export function LessonMap() {
               >
                 {now && (
                   <span className="absolute -top-2.5 end-3 rounded-full bg-fwd px-2 py-0.5 text-[11px] font-semibold text-[#06202f]">
-                    {t('continue')}
+                    {state.passed.length ? t('continue') : t('startHere')}
                   </span>
                 )}
                 <div className="nums flex justify-between text-xs text-faint">

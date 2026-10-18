@@ -131,10 +131,6 @@
     "nextMeta": "Lesson {n}, {min} min",
     "passedOf": "{k} of 12 passed",
     "progress": "Course progress",
-    "slotSimulator": "Opens with the next release: a simulator built from this lesson's kernel, with sliders for block size and shape.",
-    "slotExercise": "Opens with the next release: you write the kernel in the editor and the in-browser GPU checks it.",
-    "slotExerciseKernel": "Opens with the next release: you write this kernel in the editor and the in-browser GPU checks it against the real one shown below.",
-    "slotQuiz": "Opens with the next release: three questions, graded on the spot.",
     "run": "Run on the GPU",
     "running": "Running your kernel warp by warp…",
     "cancel": "Stop",
@@ -148,6 +144,13 @@
     "sectorsPerReq": "sectors per request",
     "bankWorst": "worst bank conflict",
     "divergent": "divergent instructions",
-    "racesN": "data races"
+    "racesN": "data races",
+    "checkAnswers": "Check answers",
+    "quizScore": "{k} of {n} correct",
+    "quizRight": "Right.",
+    "quizWrong": "Not quite.",
+    "quizRetry": "Try again",
+    "startHere": "Start here",
+    "subsetLink": "What CUDA the in-browser GPU accepts"
   }
 }

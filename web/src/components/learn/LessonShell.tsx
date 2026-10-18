@@ -10,21 +10,8 @@ import { DOCS } from '@/content/en/learn';
 import { LESSONS, type Lesson } from '@/learn/lessons';
 import { LessonRail } from './LessonRail';
 import { RunPanel } from './RunPanel';
+import { Quiz } from './Quiz';
 import { Simulator } from './Simulator';
-
-function Slot({ title, body, tag }: { title: string; body: string; tag: string }) {
-  return (
-    <section className="mb-10">
-      <h2 className="m-0 mb-3 flex items-center gap-3 font-display text-[26px] font-bold tracking-tight">
-        {title}
-        <span className="nums rounded-md border border-line bg-raised px-2 py-1 text-xs font-medium text-muted">
-          {tag}
-        </span>
-      </h2>
-      <div className="panel border-dashed px-5 py-4 text-[15px] text-muted">{body}</div>
-    </section>
-  );
-}
 
 export function LessonShell({ lesson }: { lesson: Lesson }) {
   const t = useTranslations('learn');
@@ -95,10 +82,19 @@ export function LessonShell({ lesson }: { lesson: Lesson }) {
           </section>
         )}
 
-        <Slot title={t('quiz')} tag="quiz" body={t('slotQuiz')} />
+        <section className="mb-10" data-testid="quiz-section">
+          <h2 className="m-0 mb-3 flex items-center gap-3 font-display text-[26px] font-bold tracking-tight">
+            {t('quiz')}
+            <span className="nums rounded-md border border-line bg-raised px-2 py-1 text-xs font-medium text-muted">quiz</span>
+          </h2>
+          <Quiz slug={lesson.slug} />
+        </section>
 
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-[18px] border border-fwd/30 px-6 py-5" style={{ background: 'linear-gradient(135deg, rgba(116,199,255,.08), rgba(255,154,77,.06))' }}>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/learn/subset" className="text-sm text-fwd hover:underline">
+              {t('subsetLink')}
+            </Link>
             {lesson.inspectorHref && (
               <Link href={lesson.inspectorHref} className="btn-ghost">
                 {t('inModel')}

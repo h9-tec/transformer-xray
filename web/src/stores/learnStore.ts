@@ -12,8 +12,11 @@ export type LessonStatus = 'passed' | 'current' | 'todo';
 export interface LearnState {
   passed: string[];
   current: string;
+  /** best quiz score per lesson */
+  quiz: Record<string, number>;
   markPassed: (slug: string) => void;
   setCurrent: (slug: string) => void;
+  setQuiz: (slug: string, score: number) => void;
   reset: () => void;
 }
 
@@ -67,6 +70,7 @@ export const useLearnStore = create<LearnState>()(
     (set, get) => ({
       passed: [],
       current: FIRST,
+      quiz: {},
       markPassed: (slug) => {
         const { passed, current } = get();
         set({
@@ -75,12 +79,13 @@ export const useLearnStore = create<LearnState>()(
         });
       },
       setCurrent: (slug) => set({ current: slug }),
-      reset: () => set({ passed: [], current: FIRST }),
+      setQuiz: (slug, score) => set((s) => ({ quiz: { ...s.quiz, [slug]: Math.max(score, s.quiz[slug] ?? 0) } })),
+      reset: () => set({ passed: [], current: FIRST, quiz: {} }),
     }),
     {
       name: 'xray-learn',
       storage: createJSONStorage(() => safeStorage()),
-      partialize: (s) => ({ passed: s.passed, current: s.current }),
+      partialize: (s) => ({ passed: s.passed, current: s.current, quiz: s.quiz }),
     },
   ),
 );

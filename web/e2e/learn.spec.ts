@@ -42,3 +42,29 @@ test('slot copy never points at a kernel that is not there', async ({ page }) =>
   expect(text).not.toMatch(/kernel below/i);
   expect(text).not.toMatch(/inspector link/i);
 });
+
+test('a fresh visitor sees Start here on lesson 1, not Continue', async ({ page }) => {
+  await page.goto('en/learn/');
+  const first = page.getByRole('list', { name: 'Lesson map' }).getByRole('link').first();
+  await expect(first).toContainText(/start here/i);
+});
+
+test('quiz grades on check, shows why, and leaves exercise progress alone', async ({ page }) => {
+  await page.goto('en/learn/hello-thread/');
+  const quiz = page.getByTestId('quiz');
+  await expect(quiz.locator('[data-testid^="quiz-why-"]')).toHaveCount(0);
+  await quiz.getByRole('radio').first().check();
+  await quiz.getByRole('radio').nth(3).check();
+  await quiz.getByRole('radio').nth(6).check();
+  await quiz.getByRole('button', { name: /check answers/i }).click();
+  await expect(quiz.getByTestId('quiz-score')).toBeVisible();
+  await expect(quiz.locator('[data-testid^="quiz-why-"]').first()).toBeVisible();
+  const passed = await page.evaluate(() => window.__stores.learn.getState().passed);
+  expect(passed).toEqual([]);
+});
+
+test('/learn/subset renders the subset reference', async ({ page }) => {
+  await page.goto('en/learn/subset/');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/CUDA subset/i);
+  await expect(page.getByText('__shfl_down_sync').first()).toBeVisible();
+});

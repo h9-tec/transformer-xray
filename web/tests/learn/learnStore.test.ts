@@ -58,4 +58,11 @@ describe('learnStore', () => {
     expect(lessonStatus('bounds-grid-stride', s)).toBe('current');
     expect(lessonStatus('warps', s)).toBe('todo');
   });
+
+  it('setQuiz stores a score without touching passed', async () => {
+    const { useLearnStore } = await freshStore(fakeStorage());
+    useLearnStore.getState().setQuiz('hello-thread', 2);
+    expect(useLearnStore.getState().quiz['hello-thread']).toBe(2);
+    expect(useLearnStore.getState().passed).toEqual([]);
+  });
 });
