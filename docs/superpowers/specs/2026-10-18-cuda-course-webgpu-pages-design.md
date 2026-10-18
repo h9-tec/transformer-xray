@@ -1,6 +1,6 @@
 # Transformer X-Ray → full CUDA course, WebGPU engine, GitHub Pages
 
-Date: 2026-10-18 · Status: draft for review
+Date: 2026-10-18 · Status: approved; amended 2026-10-18 with §4.0 (visual identity) after the user rejected the deployed look
 
 ## 1. Goal
 
@@ -74,6 +74,63 @@ web/src/
 
 The four phases are independent enough to ship one at a time; each lands on
 the live Pages site when its PR merges.
+
+### 4.0 Phase R — visual identity and site structure (added after Phase 0)
+
+The deployed Phase 0 site was rejected as "dull, dark, no learning path, too
+dense". Approved direction: **premium dark with glow**, learning path first,
+teaching over density. Mockup approved 2026-10-18:
+`https://claude.ai/artifact/JWqk8DHzW4trQKDv6gL2r4`. Phase R ships before
+Phase 1 so every later phase lands inside the new look.
+
+**Design system** (`web/src/app/globals.css` `@theme`, existing token names
+kept so component classes keep working; values remapped):
+
+| token | value | role |
+|---|---|---|
+| `bg` | `#06080f` | page ground ("ink") |
+| `surface` | `#0b0f1a` | raised surface |
+| `raised` | `#121829` | panel |
+| `line` | `rgba(160,180,230,.12)` | hairlines |
+| `ink` / `muted` / `faint` | `#e8ecf7` / `#9aa5bf` / `#5f6a85` | text levels |
+| `accent` | `#ff9a4d` (deep `#ff6a1f`) | copper: compute, threads, warps, interactive, CTA |
+| `fwd` | `#74c7ff` (deep `#2f9bff`) | ice: memory, data, forward pass |
+| `bwd` | `#ff7ab6` | backward pass / gradients |
+| `update` | `#b59bff` | optimizer |
+| `ok` / `danger` | `#5ee6a8` / `#ff6b7a` | pass / fail |
+
+Type: display **Syne** (700/800, tight tracking), body **Instrument Sans**,
+code **JetBrains Mono**, Arabic body IBM Plex Sans Arabic (unchanged). Glow
+is used in exactly three places: the hero instrument, lit lesson tiles, and
+primary buttons. No uppercase eyebrow labels, no middle-dot separators.
+
+**Site structure**
+
+- `/` landing: hero (headline + CTA "Start lesson 1" + live **warp
+  instrument**: 32 lanes, three access patterns, sectors-touched readout
+  computed from real addresses), the **lesson map** (12 tiles laid out as a
+  GPU die; tile state from `learnStore`), "How a lesson works" (see / write
+  / find it in the model), the three labs with live thumbnails.
+- `/learn` course index: intro + the same lesson map.
+- `/learn/[slug]` lesson shell (full content arrives in Phase 2): header
+  (number, minutes, kernel it builds toward), goals, "what you will build",
+  the real kernel source for lessons that have one, link into the matching
+  inspector. Exercise, simulator and quiz slots state plainly that they open
+  with the interpreter release.
+- Labs (`/playground`, `/train`, `/inspect/*`) keep their routes, restyled
+  through the tokens; inspectors default to Intuition depth and the GPU panel
+  moves into a collapsible "Under the hood" section so the first screen is
+  the story, not the numbers.
+- Shared: `web/src/learn/lessons.ts` (the 12-lesson table: slug, number,
+  title, blurb, minutes, kernelFile, inspectorHref) and
+  `web/src/stores/learnStore.ts` (Zustand + persist; `passed: slug[]`,
+  `current: slug`), both consumed by Phase 2.
+- `web/src/lib/memory.ts`: `sectorsTouched(byteAddrs, sectorBytes=32)` and
+  `bankConflicts(byteAddrs)` — pure, unit-tested, used by the hero now and by
+  the Phase 1 instrumentation later.
+
+**Out of scope for R:** lesson prose, simulators beyond the hero, exercises,
+quizzes (Phase 2); interpreter (Phase 1).
 
 ### 4.1 Phase 0 — GitHub Pages deploy
 
@@ -308,7 +365,8 @@ authoritative run is local on the RTX 5080 before each release.
 
 | phase | deliverable | effort |
 |---|---|---|
-| 0 | repo + Pages live with today's app | half a day |
+| 0 | repo + Pages live with today's app | half a day (done 2026-10-18) |
+| R | new visual identity, landing, lesson map, lesson shell, restyled labs | ~3 days |
 | 1 | interpreter + fixtures green + perf measured | ~5 days |
 | 2 | 12 lessons live with editor, sims, quizzes, progress | ~6 days |
 | 3a / 3b | WebGPU forward (playground) / backward (trainer) | ~3 + ~2 days |
