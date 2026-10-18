@@ -24,7 +24,7 @@ export function TrainView() {
 
   return (
     <div className="space-y-6">
-      <BackendSwitch lastMs={s.lastMs} busy={s.running} />
+      <BackendSwitch lastMs={s.lastMs} busy={s.running} unit="step" />
       <div className="panel flex flex-wrap items-center gap-4 p-4">
         <div role="radiogroup" aria-label={t('source')} className="flex gap-1">
           {(['scratch', 'checkpoint'] as const).map((src) => (

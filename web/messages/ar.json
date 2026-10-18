@@ -161,6 +161,7 @@
     "unavailable": "بطاقتك الرسومية غير متاحة",
     "fellBack": "عدنا إلى المعالج",
     "checking": "جارٍ البحث عن محوّل WebGPU…",
-    "cpuNote": "محرك TypeScript في عامل خلفي. انتقل إلى بطاقتك الرسومية لتشغيل توائم WGSL لنوى CUDA."
+    "cpuNote": "محرك TypeScript في عامل خلفي. انتقل إلى بطاقتك الرسومية لتشغيل توائم WGSL لنوى CUDA.",
+    "perTrainStep": "لكل خطوة تدريب، WebGPU"
   }
 }

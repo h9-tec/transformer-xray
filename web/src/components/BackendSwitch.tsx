@@ -7,7 +7,7 @@
 import { useTranslations } from 'next-intl';
 import { useModelStore } from '@/stores/modelStore';
 
-export function BackendSwitch({ lastMs, busy = false }: { lastMs?: number | null; busy?: boolean }) {
+export function BackendSwitch({ lastMs, busy = false, unit = 'token' }: { lastMs?: number | null; busy?: boolean; unit?: 'token' | 'step' }) {
   const t = useTranslations('backend');
   const { backend, backendInfo, gpuAvailable, setBackend } = useModelStore();
   const gpuDisabled = gpuAvailable === false;
@@ -49,7 +49,7 @@ export function BackendSwitch({ lastMs, busy = false }: { lastMs?: number | null
             {lastMs != null && (
               <span data-testid="backend-ms">
                 {' '}
-                {lastMs.toFixed(1)} ms {t('perStep')}
+                {lastMs.toFixed(1)} ms {unit === 'step' ? t('perTrainStep') : t('perStep')}
               </span>
             )}
           </>

@@ -161,6 +161,7 @@
     "unavailable": "your GPU is unavailable",
     "fellBack": "back on the CPU",
     "checking": "checking for a WebGPU adapter…",
-    "cpuNote": "TypeScript engine in a worker. Switch to your GPU for the WebGPU twins of the CUDA kernels."
+    "cpuNote": "TypeScript engine in a worker. Switch to your GPU for the WebGPU twins of the CUDA kernels.",
+    "perTrainStep": "per training step, WebGPU"
   }
 }
