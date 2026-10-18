@@ -222,8 +222,10 @@ class Compiler {
           for (;;) {
             if (live === 0) break;
             w.active = live;
+            // Every iteration costs at least one warp instruction, even
+            // `for (;;) {}`: this is what makes the budget inescapable.
+            tick(w);
             if (cond) {
-              tick(w);
               const t = truthy(cond(w), live);
               done |= live & ~t;
               live = t;

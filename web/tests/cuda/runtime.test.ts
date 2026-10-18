@@ -200,6 +200,18 @@ describe('runtime core', () => {
     ).toThrowError(expect.objectContaining({ kind: 'timeout', line: 2 }));
   });
 
+  it('an empty-body for(;;) loop also hits the budget', () => {
+    expect(() => run(`__global__ void k(float* y) {\n for (;;) {}\n }`, 'k', { args: [f32('y', 1)], budget: 100000 })).toThrowError(
+      expect.objectContaining({ kind: 'timeout', line: 2 }),
+    );
+  });
+
+  it('an empty-body while(1) with no statements also hits the budget', () => {
+    expect(() => run(`__global__ void k(float* y) {\n while (1) ;\n }`, 'k', { args: [f32('y', 1)], budget: 100000 })).toThrowError(
+      expect.objectContaining({ kind: 'timeout', line: 2 }),
+    );
+  });
+
   it('printf captures per-lane lines with %d and %f', () => {
     const r = run(`__global__ void k(float* y) { printf("tid %d x %f\\n", threadIdx.x, y[threadIdx.x]); }`, 'k', {
       block: [2, 1, 1],
