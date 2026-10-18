@@ -113,6 +113,22 @@
     "legendPassed": "Passed",
     "legendCurrent": "In progress",
     "legendTodo": "Not started",
-    "legendTotal": "Total: about 5 hours"
+    "legendTotal": "Total: about 5 hours",
+    "indexTitle": "The CUDA course",
+    "indexSub": "Twelve lessons, each one a kernel you write and a mechanism you can see. Start at one; the order is the argument.",
+    "lessonOf": "Lesson {n} of 12",
+    "buildsToward": "Builds toward kernels/{file}",
+    "goals": "What you will understand",
+    "youWillBuild": "What you will build",
+    "simulator": "Simulator",
+    "exercise": "Exercise",
+    "quiz": "Quiz",
+    "opensWithInterpreter": "Opens with the in-browser GPU release. The kernel below is the real one this lesson builds toward; the inspector link shows it running inside the model today.",
+    "kernelTitle": "The real kernel",
+    "inModel": "See it in the model",
+    "next": "Next lesson",
+    "nextMeta": "Lesson {n}, {min} min",
+    "passedOf": "{k} of 12 passed",
+    "progress": "Course progress"
   }
 }

@@ -39,6 +39,7 @@ export function LessonMap() {
             <li key={l.slug} className="min-w-0">
               <Link
                 href={`/learn/${l.slug}`}
+                data-status={status}
                 className={`relative flex min-h-[150px] flex-col gap-2.5 rounded-xl border bg-raised px-3.5 pt-3.5 pb-3 transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-accent/45 ${
                   lit
                     ? 'border-accent/35 shadow-[0_0_0_1px_rgba(255,154,77,.15),0_0_28px_rgba(255,154,77,.15)]'

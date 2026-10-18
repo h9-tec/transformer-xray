@@ -4,15 +4,6 @@
 
 import { expect, test } from '@playwright/test';
 
-// The stores are exposed on window for exactly this purpose.
-declare global {
-  interface Window {
-    __stores: {
-      model: { getState(): { status: string } };
-      trace: { getState(): { status: string; loss: number | null } };
-    };
-  }
-}
 
 async function waitForModel(page: import('@playwright/test').Page) {
   await page.waitForFunction(() => window.__stores?.model.getState().status === 'ready', {
