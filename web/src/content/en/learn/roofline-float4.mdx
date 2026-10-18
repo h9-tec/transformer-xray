@@ -14,9 +14,11 @@ leaning on?
 
   GELU does about 20 operations per float and moves 8 bytes per float: an
   intensity of 2.5. That is far below the point where arithmetic matters, so
-  GELU is memory-bound, and the only way to make it faster is to move bytes
-  more efficiently. The exercise rewrites `gelu` with float4: the same bytes
-  in a quarter of the instructions.
+  GELU is memory-bound, and the only ways to make it faster are to move
+  fewer bytes or to move them better. The exercise `gelu_residual` does the
+  first: the residual add and the GELU run as two passes in the starter,
+  with the sum written to global memory and read straight back. Fuse them
+  and 20 bytes per element become 12.
 </Junior>
 
 <Senior>
@@ -28,23 +30,19 @@ leaning on?
   ridge; the matmuls at the model's shapes sit near it; only large GEMMs
   reach the compute roof.
 
-  Vectorization does not change intensity. The float4 GELU moves exactly the
-  same bytes. What it changes is the number of memory *instructions* and
-  warp requests the memory system must track, which is what limits a
-  memory-bound kernel in practice once the access pattern is already
-  coalesced. The repo's measured results file shows the float4 variant ahead
-  of the scalar one; the simulator shows the request count dropping from 256
-  to 64 for 4096 floats.
+  Fusion raises intensity: the same 22 FLOPs over 12 bytes instead of 20.
+  Vectorization (`gelu_forward_f4`, the real kernel below) does not change
+  intensity at all; it changes the number of memory *instructions* and warp
+  requests the memory system must track, which is what limits a memory-bound
+  kernel once its accesses are already coalesced. The repo's measured results
+  show the float4 variant ahead of the scalar one. Production stacks do both:
+  fuse the elementwise tail of a layer into one kernel, then vectorize it.
 </Senior>
 
 ```cuda
-__global__ void gelu(const float4* x, float4* y, int n) {
-  int n4 = n / 4;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n4; i += gridDim.x * blockDim.x) {
-    float4 v = x[i];
-    y[i] = make_float4(gelu_tanh(v.x), gelu_tanh(v.y), gelu_tanh(v.z), gelu_tanh(v.w));
-  }
-}
+// two passes: a, b read; tmp written; tmp read; y written   = 20 B per element
+// one pass:   a, b read;                       y written   = 12 B per element
+// same 22 FLOPs either way: intensity 1.1 against 1.8 FLOP per byte
 ```
 
 What comes next, and is out of this course's scope: tensor cores (matrix

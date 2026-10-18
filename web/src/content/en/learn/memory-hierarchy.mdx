@@ -15,7 +15,9 @@ level costs, is the difference between guessing and engineering.
     hundreds of cycles away, but very wide.
 
   A copy kernel does no math at all: read a float, write a float. Its speed is
-  purely bandwidth. The exercise, `copy`, asks you to move the same bytes with
+  purely bandwidth. Two words for the next lessons: a **request** is one
+  load or store instruction issued by a warp, and the memory system serves
+  it in 32-byte **sectors**. The exercise, `copy`, asks you to move the same bytes with
   a quarter of the instructions by loading four floats at a time.
 </Junior>
 
@@ -35,11 +37,8 @@ level costs, is the difference between guessing and engineering.
 </Senior>
 
 ```cuda
-__global__ void copy(const float4* x, float4* y, int n) {
-  int n4 = n / 4;
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n4) y[i] = x[i];
-}
+float4 v = x[i];                           // one 16-byte load: v.x  v.y  v.z  v.w
+y[i] = make_float4(v.x, v.y, v.z, v.w);    // one 16-byte store
 ```
 
 Watch the request count in the result card: the scalar version issues 256

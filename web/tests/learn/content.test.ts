@@ -48,3 +48,27 @@ it('each MDX has an Intuition and a Full depth block', () => {
     expect(text, l.slug).toContain('<Senior>');
   }
 });
+
+it('no concept text prints the exercise solution (at most two consecutive solution lines)', () => {
+  for (const l of LESSONS) {
+    const text = fs.readFileSync(path.join(DIR, `${l.slug}.mdx`), 'utf8').replace(/\s+/g, ' ');
+    const lines = EXERCISES[l.slug].solution.split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('//'));
+    for (let i = 0; i + 2 < lines.length; i++) {
+      const run = lines.slice(i, i + 3).join(' ');
+      expect(text.includes(run), `${l.slug} prints solution lines ${i + 1}..${i + 3}`).toBe(false);
+    }
+  }
+});
+
+it('quiz answers are not guessable by position', () => {
+  const counts = [0, 0, 0, 0];
+  let total = 0;
+  for (const l of LESSONS) for (const q of QUIZZES[l.slug].questions) { counts[q.answer]++; total++; }
+  for (const c of counts) expect(c / total).toBeLessThanOrEqual(0.5);
+});
+
+it('the tiled-matmul lesson does not claim the warp fetches A 32 times', () => {
+  const text = fs.readFileSync(path.join(DIR, 'tiled-matmul.mdx'), 'utf8');
+  expect(text).not.toMatch(/fetches it thirty-two times/);
+  expect(QUIZZES['tiled-matmul'].questions[0].q).toMatch(/B/);
+});

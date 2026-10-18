@@ -43,6 +43,6 @@ __global__ void embedding_scatter_add(const float* dOut, const int* ids, float* 
   targets: [noRaces()],
   hint: ({ races }) =>
     races.length
-      ? `Threads from different blocks write dWte at the same address (line ${races[0].firstLine}). On real hardware they run at the same time and updates are lost. atomicAdd(&dWte[...], value).`
+      ? `Threads from different blocks write dWte at the same address (line ${races[0].firstLine}). On real hardware they run at the same time and updates are lost. Which builtin makes a read-modify-write indivisible?`
       : null,
 };

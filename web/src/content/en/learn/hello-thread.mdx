@@ -31,10 +31,11 @@ hardware hands it.
 </Senior>
 
 ```cuda
-__global__ void vector_add(const float* a, const float* b, float* y, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i < n) y[i] = a[i] + b[i];
-}
+vector_add<<<16, 256>>>(a, b, y, n);   // 16 blocks × 256 threads = 4096 threads
+// inside the kernel, three builtins tell a thread who it is:
+//   blockIdx.x    which block          0..15
+//   blockDim.x    threads per block    256
+//   threadIdx.x   seat inside the block 0..255
 ```
 
 Run the starter and read the first mismatch: every thread computed index 0,

@@ -151,6 +151,7 @@
     "quizWrong": "Not quite.",
     "quizRetry": "Try again",
     "startHere": "Start here",
-    "subsetLink": "What CUDA the in-browser GPU accepts"
+    "subsetLink": "What CUDA the in-browser GPU accepts",
+    "crash": "The kernel runner stopped unexpectedly. Run again."
   }
 }

@@ -32,10 +32,8 @@ that assumes they match is correct for exactly one input size.
 </Senior>
 
 ```cuda
-__global__ void residual_add(const float* a, const float* b, float* out, int n) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x)
-    out[i] = a[i] + b[i];
-}
+int total = gridDim.x * blockDim.x;   // threads in the whole grid
+// a thread's elements: i, i + total, i + 2 * total, ... as long as they exist
 ```
 
 The exercise launches 1024 threads over 5000 elements. The starter covers the

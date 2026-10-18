@@ -6,13 +6,15 @@
 
 import { cpp } from '@codemirror/lang-cpp';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorState, StateEffect, StateField } from '@codemirror/state';
+import { Annotation, EditorState, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { basicSetup } from 'codemirror';
 import { useEffect, useRef } from 'react';
 
 const setErrorLine = StateEffect.define<number | null>();
+/** Marks a transaction the component dispatched itself (reset, show solution). */
+const External = Annotation.define<boolean>();
 const errorLineField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
@@ -39,7 +41,7 @@ const theme = EditorView.theme(
     '&.cm-focused .cm-cursor': { borderLeftColor: '#ff9a4d' },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground': { backgroundColor: 'rgba(116,199,255,0.18)' },
     '.cm-error-line': { backgroundColor: 'rgba(255,107,122,0.14)', boxShadow: 'inset 3px 0 0 #ff6b7a' },
-    '&.cm-focused': { outline: 'none' },
+    '&.cm-focused': { outline: '2px solid rgba(116,199,255,.55)', outlineOffset: '-2px' },
     '.cm-matchingBracket': { backgroundColor: 'rgba(255,154,77,0.2)', outline: 'none' },
   },
   { dark: true },
@@ -87,7 +89,9 @@ export function Editor({ id, value, onChange, errorLine }: EditorProps) {
           syntaxHighlighting(highlight),
           errorLineField,
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+            if (!u.docChanged) return;
+            if (u.transactions.some((tr) => tr.annotation(External))) return;
+            onChangeRef.current(u.state.doc.toString());
           }),
         ],
       }),
@@ -96,6 +100,7 @@ export function Editor({ id, value, onChange, errorLine }: EditorProps) {
     view.current = v;
     window.__cm ??= {};
     window.__cm[id] = {
+      // the test hook types "as the user": it must go through onChange
       setText: (text) => v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: text } }),
       getText: () => v.state.doc.toString(),
     };
@@ -113,7 +118,7 @@ export function Editor({ id, value, onChange, errorLine }: EditorProps) {
     const v = view.current;
     if (!v) return;
     if (v.state.doc.toString() !== value) {
-      v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
+      v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value }, annotations: External.of(true) });
     }
   }, [value]);
 

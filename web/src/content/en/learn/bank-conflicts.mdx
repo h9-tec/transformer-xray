@@ -13,9 +13,9 @@ difference is one column of padding.
 
   In the transpose `transpose32`, writing the tile row by row is fine. Reading
   it column by column means lane 0 reads word 0, lane 1 reads word 32, lane 2
-  word 64: all bank 0. Declare the tile as 32 rows of **33** and row `r` now
-  starts at word `33r`, which is bank `r`. The same column read hits 32
-  different banks.
+  word 64: all bank 0. The cure is to make consecutive rows start in
+  consecutive banks. Use the bank formula to work out how long a row must
+  be for that to happen; the change is one number in the declaration.
 </Junior>
 
 <Senior>
@@ -33,14 +33,9 @@ difference is one column of padding.
 </Senior>
 
 ```cuda
-__global__ void transpose32(const float* in, float* out) {
-  __shared__ float tile[32][33];
-  int tx = threadIdx.x;
-  int ty = threadIdx.y;
-  tile[ty][tx] = in[ty * 32 + tx];
-  __syncthreads();
-  out[ty * 32 + tx] = tile[tx][ty];
-}
+int bank = (byte_address / 4) % 32;      // 32 banks, 4 bytes wide
+// tile[32][32]: row r starts at word 32 r, which is bank 0 for every r
+// a column read (lanes vary r) therefore lands 32 lanes in bank 0
 ```
 
 Both versions are correct. Only the conflict card changes: 32-way, then

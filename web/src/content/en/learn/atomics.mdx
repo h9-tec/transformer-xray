@@ -34,13 +34,8 @@ address at the same time, and `+=` is not safe.
 </Senior>
 
 ```cuda
-__global__ void embedding_scatter_add(const float* dOut, const int* ids, float* dWte, int T, int D) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= T * D) return;
-  int t = idx / D;
-  int i = idx % D;
-  atomicAdd(&dWte[ids[t] * D + i], dOut[idx]);
-}
+float atomicAdd(float* address, float value);   // returns the old value
+// read, add, write happen as one step that no other thread can interleave
 ```
 
 The gather's transpose is a scatter. That symmetry shows up again in every

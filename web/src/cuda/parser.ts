@@ -65,7 +65,13 @@ class Parser {
     return { line: t.line, col: t.col };
   }
   private expect(text: string): Token {
-    if (!this.at(text)) this.fail(`expected '${text}' but found '${this.describe(this.peek())}'`);
+    if (!this.at(text)) {
+      // A missing ';' or ')' belongs to the line that ends without it, not to
+      // the line where the parser noticed. Point at the end of the previous token.
+      const prev = this.i > 0 ? this.toks[this.i - 1] : null;
+      const at = (text === ';' || text === ')') && prev ? { ...prev, col: prev.col + Math.max(1, prev.text.length) } : this.peek();
+      throw new ParseError(`expected '${text}' but found '${this.describe(this.peek())}'`, at.line, at.col);
+    }
     return this.next();
   }
   private accept(text: string): boolean {

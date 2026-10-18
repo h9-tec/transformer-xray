@@ -38,3 +38,9 @@ it('rejects templates and references as unsupported with a position', () => {
     expect.objectContaining({ kind: 'unsupported', line: 1 }),
   );
 });
+
+it('a missing semicolon is reported on the line that lacks it', () => {
+  expect(() => parse('__global__ void k(float* y) {\n int i = threadIdx.x\n y[i] = 1.f;\n}')).toThrowError(
+    expect.objectContaining({ kind: 'parse', line: 2 }),
+  );
+});

@@ -35,14 +35,10 @@ code: the data race.
 </Senior>
 
 ```cuda
-__global__ void reverse_blocks(const float* x, float* y, int n) {
-  __shared__ float s[64];
-  int t = threadIdx.x;
-  int base = blockIdx.x * blockDim.x;
-  s[t] = x[base + t];
-  __syncthreads();
-  y[base + t] = s[blockDim.x - 1 - t];
-}
+__shared__ float s[64];      // one copy per block, visible to its 64 threads
+s[threadIdx.x] = ...;        // every thread fills its own slot
+__syncthreads();             // nobody reads until everybody has written
+... = s[some_other_slot];    // now safe
 ```
 
 Run the starter: the result is wrong *and* the race card names line 9 and

@@ -14,8 +14,9 @@ is a warp, and most GPU performance stories are warp stories.
   work for the same result. That is **divergence**.
 
   Divergence is not a bug, but it is a cost. The lesson's exercise,
-  `odd_even`, asks you to get the same answer without splitting the warp:
-  compute both candidates and keep one with arithmetic.
+  `odd_even`, has two genuinely different loops for odd and even elements.
+  You cannot remove the branch, but you can decide which thread handles
+  which element, so that every warp sees only odd or only even work.
 </Junior>
 
 <Senior>
@@ -28,20 +29,19 @@ is a warp, and most GPU performance stories are warp stories.
 
   Divergence is only a problem *within* a warp. A condition that is uniform
   across the 32 lanes, such as `(threadIdx.x / 32) % 2`, costs nothing: the
-  whole warp takes one path. Modern compilers turn small if/else bodies into
-  predicated selects automatically, which is why the hand-written select below
-  mirrors what the machine would prefer anyway.
+  whole warp takes one path. Modern compilers turn tiny if/else bodies into
+  predicated selects, so a one-line branch may not diverge at all on real
+  hardware; the simulator counts every partially-masked instruction. The
+  exercise's arms are eight-step loops precisely so the cost is real.
 </Senior>
 
 ```cuda
-__global__ void odd_even(const float* a, float* y, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= n) return;
-  float odd = (float)(i & 1);
-  y[i] = odd * (a[i] * 2.f) + (1.f - odd) * (a[i] + 1.f);
-}
+if (threadIdx.x % 2)          // splits every warp: 16 lanes each way
+if (threadIdx.x < 16)         // splits every warp in half
+if ((threadIdx.x / 32) % 2)   // uniform: a whole warp agrees, no divergence
 ```
 
 The early `return` for `i >= n` looks like a branch too, and it is. It does
 not diverge here only because 1024 threads exactly cover 1024 elements, so
-every lane takes the same side.
+every lane takes the same side. The trick the exercise wants is a remap:
+nothing says thread `i` must own element `i`.

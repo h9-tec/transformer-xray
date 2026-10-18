@@ -8,9 +8,11 @@ Tiling is the one idea that fixes it, and it is the idea behind cuBLAS.
 <Junior>
   Picture a block of 32×32 threads computing a 32×32 patch of C. Thread
   $(i, j)$ walks the whole $K$ dimension reading $A[i, k]$ and $B[k, j]$.
-  Now notice that thread $(i, j+1)$ reads the **exact same** $A[i, k]$.
-  Thirty-two threads in the row all read it, and the GPU fetches it from
-  global memory thirty-two times.
+  Now notice that thread $(i+1, j)$, one row down and in a different warp,
+  reads the **exact same** $B[k, j]$. All 32 rows of the block read it, so
+  the block fetches every element of its B strip thirty-two times. (Within
+  one warp the 32 threads of a row read the same $A[i, k]$ too, but that is
+  one broadcast request; the waste is across warps and across blocks.)
 
   Shared memory is the fix: the block loads a 32×32 tile of A and a 32×32
   tile of B into it once, then each thread reads from the scratchpad. Every
@@ -39,12 +41,13 @@ Tiling is the one idea that fixes it, and it is the idea behind cuBLAS.
 </Senior>
 
 ```cuda
+__shared__ float As[TILE][TILE];
+__shared__ float Bs[TILE][TILE];
 for (int k0 = 0; k0 < K; k0 += TILE) {
-  As[threadIdx.y][threadIdx.x] = (i < M && k0 + threadIdx.x < K) ? A[i * K + k0 + threadIdx.x] : 0.f;
-  Bs[threadIdx.y][threadIdx.x] = (k0 + threadIdx.y < K && j < N) ? B[(k0 + threadIdx.y) * N + j] : 0.f;
-  __syncthreads();
-  for (int k = 0; k < TILE; k++) acc += As[threadIdx.y][k] * Bs[k][threadIdx.x];
-  __syncthreads();
+  // 1. every thread stages one element of A and one of B into the tiles
+  // 2. barrier: the tiles must be complete before anyone reads them
+  // 3. each thread accumulates TILE products from the tiles
+  // 4. barrier: everyone must be done reading before the next overwrite
 }
 ```
 

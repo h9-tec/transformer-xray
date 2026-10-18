@@ -9,6 +9,19 @@ import { WORKER_URL } from './worker-url';
 
 type Pending = { resolve: (r: CudaResponse) => void; reject: (e: Error) => void };
 
+export type CudaClientErrorCode = 'cancelled' | 'crashed';
+
+/** Why a run never produced a response: the user stopped it, or the worker died. */
+export class CudaClientError extends Error {
+  constructor(
+    readonly code: CudaClientErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'CudaClientError';
+  }
+}
+
 export class CudaClient {
   private worker: Worker | null = null;
   private nextId = 1;
@@ -23,16 +36,16 @@ export class CudaClient {
       this.pending.delete(e.data.id);
       p.resolve(e.data);
     };
-    w.onerror = () => this.restart();
-    w.onmessageerror = () => this.restart();
+    w.onerror = () => this.restart('crashed');
+    w.onmessageerror = () => this.restart('crashed');
     this.worker = w;
     return w;
   }
 
-  private restart(): void {
+  private restart(code: CudaClientErrorCode): void {
     this.worker?.terminate();
     this.worker = null;
-    const err = new Error('the kernel runner restarted');
+    const err = new CudaClientError(code, code === 'cancelled' ? 'run stopped' : 'the kernel runner restarted');
     for (const p of this.pending.values()) p.reject(err);
     this.pending.clear();
   }
@@ -49,6 +62,6 @@ export class CudaClient {
 
   /** Kill a runaway kernel (the worker enforces a budget, but a user may not want to wait). */
   cancel(): void {
-    this.restart();
+    this.restart('cancelled');
   }
 }

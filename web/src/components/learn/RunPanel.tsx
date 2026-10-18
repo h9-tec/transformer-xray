@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CudaClient } from '@/cuda/worker/client';
 import type { CudaResponse, WireArg, WireError } from '@/cuda/worker/protocol';
 import { gradeFromWire, type GradeResult } from '@/learn/exercise';
+import { classifyRunFailure } from '@/learn/runFailure';
 import { EXERCISES } from '@/learn/exercises';
 import { useLearnStore } from '@/stores/learnStore';
 import { Editor } from './Editor';
@@ -34,6 +35,7 @@ export function RunPanel({ slug }: { slug: string }) {
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<GradeResult | null>(null);
   const [error, setError] = useState<WireError | null>(null);
+  const [crash, setCrash] = useState<string | null>(null);
   const [ms, setMs] = useState(0);
   const [ran, setRan] = useState(false);
   const [showingSolution, setShowingSolution] = useState(false);
@@ -50,10 +52,13 @@ export function RunPanel({ slug }: { slug: string }) {
     window.__exercise = { slug, starter: ex.starter, solution: ex.solution };
   }, [storageKey, slug, ex.starter, ex.solution]);
 
+  // user edits only (external sets never reach here, see Editor)
   const onChange = useCallback(
     (text: string) => {
       setCode(text);
       setShowingSolution(false);
+      draftBeforeSolution.current = null;
+      setResult(null);
       try {
         localStorage.setItem(storageKey, text);
       } catch {
@@ -66,6 +71,7 @@ export function RunPanel({ slug }: { slug: string }) {
   const run = useCallback(async () => {
     setStatus('running');
     setError(null);
+    setCrash(null);
     setResult(null);
     const built = ex.build(1);
     // copies: the worker takes ownership of what we send
@@ -86,7 +92,12 @@ export function RunPanel({ slug }: { slug: string }) {
         instrument: true,
       });
     } catch (e) {
-      setError({ kind: 'runtime', message: e instanceof Error ? e.message : String(e), line: 1, col: 1 });
+      const f = classifyRunFailure(e);
+      if (f.kind === 'cancelled') {
+        setStatus('idle');
+        return;
+      }
+      setCrash(f.message);
       setStatus('error');
       setRan(true);
       return;
@@ -113,6 +124,7 @@ export function RunPanel({ slug }: { slug: string }) {
     onChange(ex.starter);
     setResult(null);
     setError(null);
+    setCrash(null);
     setStatus('idle');
   }, [ex.starter, onChange]);
 
@@ -155,7 +167,7 @@ export function RunPanel({ slug }: { slug: string }) {
       <div className="grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Editor id={slug} value={code} onChange={onChange} errorLine={errorLine} />
 
-        <div className="flex min-w-0 flex-col gap-3 border-t border-line p-4 lg:border-s lg:border-t-0">
+        <div className="flex min-w-0 flex-col gap-3 border-t border-line p-4 lg:border-s lg:border-t-0" data-testid="run-results" dir="ltr" lang="en">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -172,8 +184,14 @@ export function RunPanel({ slug }: { slug: string }) {
 
           {status === 'running' && <p className="m-0 text-sm text-muted">{t('running')}</p>}
 
+          {crash && (
+            <div className="rounded-[10px] border border-danger/40 bg-danger/10 p-3 text-sm" data-testid="run-crash">
+              <b className="text-danger">{t('crash')}</b>
+              <p className="m-0 mt-1 text-ink">{crash}</p>
+            </div>
+          )}
           {error && (
-            <div className="rounded-[10px] border border-danger/40 bg-danger/10 p-3 text-sm" data-testid="run-error" dir="ltr">
+            <div className="rounded-[10px] border border-danger/40 bg-danger/10 p-3 text-sm" data-testid="run-error">
               <b className="text-danger">{t('errorAt', { line: error.line })}</b>
               <p className="m-0 mt-1 text-ink">{error.message}</p>
               {error.thread && (

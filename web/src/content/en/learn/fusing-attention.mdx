@@ -34,15 +34,11 @@ That is fusion, and it is why production attention kernels exist.
 </Senior>
 
 ```cuda
-// 2. softmax over s[0..row], max-subtraction, single thread for clarity
-if (tid == 0) {
-  float mx = -1e30f;
-  for (int j = 0; j <= row; j++) mx = fmaxf(mx, s[j]);
-  float sum = 0.f;
-  for (int j = 0; j <= row; j++) { s[j] = expf(s[j] - mx); sum += s[j]; }
-  float inv = 1.f / sum;
-  for (int j = 0; j <= row; j++) s[j] *= inv;
-}
+// 1. scores    s[j] = (q[row] · k[j]) * scale   for j <= row   (threads split j)
+//    barrier
+// 2. softmax   s[j] = exp(s[j] - max) / sum       one thread is enough here
+//    barrier
+// 3. output    out[row][i] = Σ_j s[j] * v[j][i]   (threads split i)
 ```
 
 Doing the softmax on one thread is deliberately simple. Turning it into a

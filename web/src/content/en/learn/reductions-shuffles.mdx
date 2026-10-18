@@ -35,12 +35,13 @@ lets a lane read another lane's register directly.
 </Senior>
 
 ```cuda
-__device__ inline float warp_sum(float v) {
-  for (int offset = 16; offset > 0; offset >>= 1)
-    v += __shfl_down_sync(0xffffffffu, v, offset);
-  return v;
-}
+// lane l receives v from lane l + offset; lanes past 31 keep their own v
+v += __shfl_down_sync(0xffffffffu, v, offset);   // offset = 16, 8, 4, 2, 1
+
+// after the tree only lane 0 is complete; give it to everyone
+mean = __shfl_sync(0xffffffffu, mean, 0);
 ```
 
 The exercise keeps the kernel name `layernorm_warp` and the launch of one
-32-thread block per row. Only the body changes.
+32-thread block per row. Only the body changes: a helper that sums a warp
+with five shuffles, and three passes where every lane owns two columns.

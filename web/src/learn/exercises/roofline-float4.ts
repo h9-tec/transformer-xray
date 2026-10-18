@@ -1,8 +1,6 @@
-import { buf, int, rand, requestsAtMost, type Exercise } from '../exercise';
+import { buf, int, rand, trafficAtMost, type Exercise } from '../exercise';
 
 const N = 4096;
-// scalar: 4096/32 warps × (1 load + 1 store) = 256 requests; float4: 64
-const F4_REQUESTS = (N / 4 / 32) * 2;
 
 function geluRef(x: number): number {
   const c = Math.fround(0.7978845608028654);
@@ -11,22 +9,27 @@ function geluRef(x: number): number {
   return Math.fround(Math.fround(0.5 * x) * Math.fround(1 + Math.fround(Math.tanh(inner))));
 }
 
+// unfused: a, b read + tmp write + tmp read + y write = 20 B/elem; fused: 12 B/elem
+const FUSED_BYTES = N * 12;
+
 export const rooflineFloat4: Exercise = {
   slug: 'roofline-float4',
-  kernel: 'gelu',
-  launch: { grid: [256, 1, 1], block: [256, 1, 1] },
-  starter: `// GELU is a pure stream: ~20 FLOPs per float, 8 bytes moved. The
-// roofline says it is memory-bound, so the only lever is moving fewer,
-// wider transactions. Rewrite the kernel to load and store float4:
-// one 16-byte transaction per lane instead of four 4-byte ones.
+  kernel: 'gelu_residual',
+  launch: { grid: [16, 1, 1], block: [256, 1, 1] },
+  starter: `// y = gelu(a + b), written as two passes through global memory:
+// the sum goes out to tmp and comes straight back in. That is 20 bytes
+// per element for about 22 FLOPs: deep in the memory-bound region.
+// Fuse the two passes so each element is read twice and written once.
 __device__ inline float gelu_tanh(float x) {
   const float c = 0.7978845608028654f;  // sqrt(2/pi)
   return 0.5f * x * (1.f + tanhf(c * (x + 0.044715f * x * x * x)));
 }
 
-__global__ void gelu(const float* x, float* y, int n) {
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x)
-    y[i] = gelu_tanh(x[i]);
+__global__ void gelu_residual(const float* a, const float* b, float* tmp, float* y, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) return;
+  tmp[i] = a[i] + b[i];          // pass 1: residual add, out to global
+  y[i] = gelu_tanh(tmp[i]);      // pass 2: back in from global, then GELU
 }
 `,
   solution: `__device__ inline float gelu_tanh(float x) {
@@ -34,25 +37,26 @@ __global__ void gelu(const float* x, float* y, int n) {
   return 0.5f * x * (1.f + tanhf(c * (x + 0.044715f * x * x * x)));
 }
 
-// Same op, 4 floats per thread per iteration: one 16-byte transaction.
-__global__ void gelu(const float4* x, float4* y, int n) {
-  int n4 = n / 4;
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n4; i += gridDim.x * blockDim.x) {
-    float4 v = x[i];
-    y[i] = make_float4(gelu_tanh(v.x), gelu_tanh(v.y), gelu_tanh(v.z), gelu_tanh(v.w));
-  }
+// One pass: the sum never leaves the register file.
+__global__ void gelu_residual(const float* a, const float* b, float* tmp, float* y, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) return;
+  float s = a[i] + b[i];
+  y[i] = gelu_tanh(s);
 }
 `,
   build: (seed) => {
-    const x = rand(N, seed, 3);
+    const a = rand(N, seed, 2);
+    const b = rand(N, seed + 1, 2);
+    const tmp = new Float32Array(N);
     const y = new Float32Array(N);
     const ref = new Float32Array(N);
-    for (let i = 0; i < N; i++) ref[i] = geluRef(x[i]);
-    return { args: [buf('x', x), buf('y', y), int(N)], outputs: [1], reference: [ref], tolerance: 1e-5 };
+    for (let i = 0; i < N; i++) ref[i] = geluRef(Math.fround(a[i] + b[i]));
+    return { args: [buf('a', a), buf('b', b), buf('tmp', tmp), buf('y', y), int(N)], outputs: [3], reference: [ref], tolerance: 1e-5 };
   },
-  targets: [requestsAtMost(F4_REQUESTS + 8, '16-byte loads and stores')],
+  targets: [trafficAtMost(FUSED_BYTES + 1024, 'read a and b once, write y once')],
   hint: ({ stats }) =>
-    stats.globalRequests > F4_REQUESTS + 8
-      ? `${stats.globalRequests} requests. Each lane should move a float4: declare x and y as float4*, loop to n / 4, and use make_float4 for the store.`
+    stats.globalBytes > FUSED_BYTES + 1024
+      ? `${(stats.globalBytes / N).toFixed(0)} bytes per element moved. The sum does not need to visit global memory at all: keep it in a local variable between the add and the GELU.`
       : null,
 };

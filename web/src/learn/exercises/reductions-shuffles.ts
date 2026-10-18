@@ -1,4 +1,4 @@
-import { buf, flt, int, noDivergence, rand, type Exercise } from '../exercise';
+import { buf, flt, int, noDivergence, rand, requestsAtMost, type Exercise } from '../exercise';
 
 const T = 16;
 const D = 64;
@@ -83,7 +83,9 @@ __global__ void layernorm_warp(const float* x, const float* g, const float* b, f
       tolerance: 1e-4,
     };
   },
-  targets: [noDivergence(4)],
+  // 16 rows × (3 passes × 2 strided iterations + g, b loads) ≈ 160 warp requests;
+  // a lane-serial version issues one request per element per pass (> 3000).
+  targets: [noDivergence(4), requestsAtMost(T * 16, 'lanes split the row, so each pass is two warp loads')],
   hint: ({ stats }) =>
     stats.divergentInstructions > 4
       ? `${stats.divergentInstructions} warp instructions ran with most lanes idle. Let every lane sum its own slice (i = lane; i < D; i += 32) and combine with shuffles.`
