@@ -13,9 +13,10 @@ permissions:
   pages: write
   id-token: write
 
+# Never cancel a running Pages deployment; queued runs collapse to the latest.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -42,7 +43,17 @@ jobs:
         run: |
           test -f out/.nojekyll
           test -f out/index.html
+          test -f out/model/weights.bin
+          ls out/engine.worker.*.js
           grep -q '/transformer-xray/_next/static' out/en/index.html
+          grep -q '/transformer-xray/favicon.ico' out/en/index.html
+          grep -rlq '"/transformer-xray"' out/_next/static/chunks/
+      # The smoke suite in the exact layout Pages serves: proves the worker,
+      # model and corpus URLs resolve under the prefix before anything ships.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test
+        env:
+          BASE_PATH: /transformer-xray
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

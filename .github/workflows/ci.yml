@@ -22,6 +22,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # worker-url.ts is generated (gitignored); tsc needs it to exist.
+      - run: pnpm build:worker
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test
