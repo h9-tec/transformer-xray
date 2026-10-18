@@ -32,12 +32,11 @@ export class Instrument implements Hooks {
   private sharedRequests = 0;
   private sharedWorst = 0;
   private epoch = 0;
-  /** last writer / last reader per address, global: bufId → addr → rec */
-  private gWrite = new Map<number, Map<number, Rec>>();
-  private gRead = new Map<number, Map<number, Rec>>();
-  private sWrite = new Map<number, Rec>();
-  private sRead = new Map<number, Rec>();
-  private reported = new Set<string>();
+  /** last writer / last reader per address: bufId → addr → rec */
+  private writes = new Map<number, Map<number, Rec>>();
+  private reads = new Map<number, Map<number, Rec>>();
+  /** grouped by (space, buffer, firstLine, secondLine) */
+  private groups = new Map<string, RaceReport>();
   private raceList: RaceReport[] = [];
 
   constructor(
@@ -47,8 +46,11 @@ export class Instrument implements Hooks {
 
   onBlockStart(): void {
     // shared memory is per block: forget its history, restart epochs
-    this.sWrite.clear();
-    this.sRead.clear();
+    for (const b of this.buffers) {
+      if (!b?.shared) continue;
+      this.writes.delete(b.id);
+      this.reads.delete(b.id);
+    }
     this.epoch = 0;
   }
 
@@ -66,18 +68,22 @@ export class Instrument implements Hooks {
     if (!this.enabled) return;
     this.globalRequests++;
     this.globalSectors += sectorsTouched(addrs);
-    let w = this.gWrite.get(buf.id);
-    let r = this.gRead.get(buf.id);
-    if (!w) this.gWrite.set(buf.id, (w = new Map()));
-    if (!r) this.gRead.set(buf.id, (r = new Map()));
-    this.track('global', buf.name, kind, addrs, line, threads, w, r);
+    this.track('global', buf, kind, addrs, line, threads);
   }
 
-  onShared(kind: AccessKind, addrs: number[], line: number, threads: ThreadId[]): void {
+  onShared(kind: AccessKind, buf: DeviceBuffer, addrs: number[], line: number, threads: ThreadId[]): void {
     if (!this.enabled) return;
     this.sharedRequests++;
     this.sharedWorst = Math.max(this.sharedWorst, bankConflicts(addrs));
-    this.track('shared', 'shared', kind, addrs, line, threads, this.sWrite, this.sRead);
+    this.track('shared', buf, kind, addrs, line, threads);
+  }
+
+  private maps(buf: DeviceBuffer): { writes: Map<number, Rec>; reads: Map<number, Rec> } {
+    let w = this.writes.get(buf.id);
+    let r = this.reads.get(buf.id);
+    if (!w) this.writes.set(buf.id, (w = new Map()));
+    if (!r) this.reads.set(buf.id, (r = new Map()));
+    return { writes: w, reads: r };
   }
 
   /** Race rule: two accesses to one address by different threads, not both
@@ -85,14 +91,14 @@ export class Instrument implements Hooks {
    * same epoch) or from different blocks (never ordered). */
   private track(
     space: 'shared' | 'global',
-    bufName: string,
+    buf: DeviceBuffer,
     kind: AccessKind,
     addrs: number[],
     line: number,
     threads: ThreadId[],
-    writes: Map<number, Rec>,
-    reads: Map<number, Rec>,
   ): void {
+    const { writes, reads } = this.maps(buf);
+    const bufName = buf.name;
     for (let i = 0; i < addrs.length; i++) {
       const a = addrs[i];
       const t = threads[i];
@@ -115,21 +121,28 @@ export class Instrument implements Hooks {
     if (prev.kind === 'load' && cur.kind === 'load') return;
     const unordered = prev.block !== cur.block || prev.epoch === cur.epoch;
     if (!unordered) return;
-    const id = `${space}:${bufName}:${addr}`;
-    if (this.reported.has(id) || this.raceList.length >= MAX_RACES) return;
-    this.reported.add(id);
     // Source order, not execution order: warps are scheduled one after
     // another, so the "second" access can run first. A learner reads
     // "line 4 writes, line 5 reads" either way.
     const [a, b] = prev.line <= cur.line ? [prev, cur] : [cur, prev];
-    this.raceList.push({
+    const key = `${space}:${bufName}:${a.line}:${b.line}`;
+    const g = this.groups.get(key);
+    if (g) {
+      g.count++;
+      return;
+    }
+    if (this.raceList.length >= MAX_RACES) return;
+    const report: RaceReport = {
       kind: space,
       address: addr,
       buffer: bufName,
       firstLine: a.line,
       secondLine: b.line,
       threads: [a.thread, b.thread],
-    });
+      count: 1,
+    };
+    this.groups.set(key, report);
+    this.raceList.push(report);
   }
 
   stats(): LaunchStats {

@@ -65,6 +65,27 @@ describe('instrumentation', () => {
     expect(r.races[0]).toMatchObject({ kind: 'shared', firstLine: 4, secondLine: 5 });
   });
 
+  it('race reports are grouped per line pair with a count, and distinct pairs both appear', () => {
+    const r = oneWarp(
+      `__global__ void k(const float* x, float* y) {
+         __shared__ float s[64];
+         __shared__ float u[64];
+         int t = threadIdx.x;
+         s[t] = x[t];
+         y[t] = s[63 - t];
+         u[t] = x[t];
+         y[t] += u[63 - t];
+       }`,
+      'k',
+      [f32('x', 64), f32('y', 64)],
+      { block: [64, 1, 1] },
+    );
+    expect(r.races).toHaveLength(2);
+    expect(r.races[0]).toMatchObject({ buffer: 's', firstLine: 5, secondLine: 6 });
+    expect(r.races[0].count).toBeGreaterThan(1);
+    expect(r.races[1]).toMatchObject({ buffer: 'u', firstLine: 7, secondLine: 8 });
+  });
+
   it('the same kernel with __syncthreads has no races', () => {
     const r = oneWarp(
       `__global__ void k(const float* x, float* y) {

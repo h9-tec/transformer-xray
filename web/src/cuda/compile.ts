@@ -24,7 +24,8 @@ import {
 } from './runtime';
 
 export type ExprFn = (w: WarpCtx) => Float64Array;
-export type StmtGen = (w: WarpCtx) => Generator<'barrier', void, void>;
+/** Statements yield the barrier's source position when they park. */
+export type StmtGen = (w: WarpCtx) => Generator<{ line: number; col: number }, void, void>;
 
 type NumKind = 'f' | 'i' | 'u' | 'p' | 'f4';
 
@@ -285,7 +286,7 @@ class Compiler {
               threadIdOf(w, Math.min(lane, LANES - 1)),
             );
           }
-          yield 'barrier';
+          yield { line, col };
         };
     }
   }
@@ -317,7 +318,7 @@ class Compiler {
         switch (r.kind) {
           case 'param': {
             const idx = r.index;
-            if (ctx.isKernel) return (w) => w.ctx.params[idx];
+            if (ctx.isKernel) return (w) => w.params[idx];
             // device function param = frame slot idx (params occupy the first slots)
             const frame = ctx.frame!;
             return () => frame[idx];
@@ -339,9 +340,7 @@ class Compiler {
             const name = r.name;
             const info = ctx.kernel;
             if (!info) throw new CudaTypeError('shared memory outside a kernel', line, col);
-            const entry = info.sharedLayout.get(name);
-            const offsetElems = entry ? entry.offset / 4 : info.staticSharedBytes / 4; // extern after static
-            const b = constBuf(makePtr(0, offsetElems));
+            const b = constBuf(makePtr(sharedBufferId(info, name), 0));
             return () => b;
           }
           case 'builtinVar': {
@@ -410,12 +409,13 @@ class Compiler {
           const ak = kindOf(e.arg.type);
           const store = this.storer(e.arg, ctx);
           const tmp = new Float64Array(LANES);
+          const pw = ak === 'p' ? (e.arg.type?.base === 'float4' ? 4 : 1) : 0;
           return (w) => {
             const cur = read(w);
             for (let l = 0; l < LANES; l++) {
               if (!has(w.active, l)) continue;
               out[l] = cur[l];
-              tmp[l] = ak === 'f' ? fr(cur[l] + delta) : ak === 'u' ? (cur[l] + delta) >>> 0 : (cur[l] + delta) | 0;
+              tmp[l] = pw ? cur[l] + delta * pw : ak === 'f' ? fr(cur[l] + delta) : ak === 'u' ? (cur[l] + delta) >>> 0 : (cur[l] + delta) | 0;
             }
             store(w, tmp);
             if (pre) for (let l = 0; l < LANES; l++) if (has(w.active, l)) out[l] = tmp[l];
@@ -504,11 +504,16 @@ class Compiler {
         const isFloat = lk === 'f' || rk === 'f';
         const isUnsigned = !isFloat && (lk === 'u' || rk === 'u');
         const fn = binaryOp(op, isFloat, isUnsigned, line, col);
+        const divides = !isFloat && (op === '/' || op === '%');
         return (w) => {
           const a = lf(w);
           const b = rf(w);
           const m = w.active;
-          for (let l = 0; l < LANES; l++) if (has(m, l)) out[l] = fn(a[l], b[l]);
+          for (let l = 0; l < LANES; l++) {
+            if (!has(m, l)) continue;
+            if (divides && b[l] === 0) throw new RuntimeError('integer division by zero', line, col, threadIdOf(w, l));
+            out[l] = fn(a[l], b[l]);
+          }
           return out;
         };
       }
@@ -539,12 +544,14 @@ class Compiler {
         const fn = binaryOp(bop, isFloat, tk === 'u', line, col);
         const tmp = new Float64Array(LANES);
         const ptrWidth = tk === 'p' ? (e.target.type?.base === 'float4' ? 4 : 1) : 0;
+        const divides = !isFloat && !ptrWidth && (bop === '/' || bop === '%');
         return (w) => {
           const v = value(w);
           const cur = read(w);
           const m = w.active;
           for (let l = 0; l < LANES; l++) {
             if (!has(m, l)) continue;
+            if (divides && v[l] === 0) throw new RuntimeError('integer division by zero', line, col, threadIdOf(w, l));
             tmp[l] = ptrWidth ? (bop === '+' ? cur[l] + v[l] * ptrWidth : cur[l] - v[l] * ptrWidth) : fn(cur[l], v[l]);
             if (tk === 'f') tmp[l] = fr(tmp[l]);
             else if (tk === 'i') tmp[l] = tmp[l] | 0;
@@ -645,13 +652,12 @@ class Compiler {
           return (w, v) => storeLanes(frame[idx], v, w.active, tk, tk);
         }
         if (r?.kind === 'param' && ctx.isKernel) {
-          // kernel params are uniform constants; writing one needs a per-warp copy
+          // a kernel param is a per-thread register: writing it copies the
+          // launch-wide constant into this warp's private view first
           const idx = r.index;
           return (w, v) => {
-            const p = w.ctx.params[idx];
-            const copy = new Float64Array(p);
-            storeLanes(copy, v, w.active, tk, tk);
-            w.ctx.params[idx] = copy;
+            if (w.params[idx] === w.ctx.params[idx]) w.params[idx] = new Float64Array(w.ctx.params[idx]);
+            storeLanes(w.params[idx], v, w.active, tk, tk);
           };
         }
         throw new CudaTypeError(`cannot assign to '${target.name}'`, line, col);
@@ -732,7 +738,7 @@ class Compiler {
         threads.push(threadIdOf(w, l));
       }
     }
-    if (buf.id === 0) w.ctx.hooks.onShared(kind, addrs, line, threads);
+    if (buf.shared) w.ctx.hooks.onShared(kind, buf, addrs, line, threads);
     else w.ctx.hooks.onGlobal(kind, buf, addrs, line, threads);
   }
 
@@ -913,7 +919,7 @@ class Compiler {
       for (;;) {
         const r = gen.next();
         if (r.done) break;
-        throw new BarrierDivergenceError('__syncthreads() inside a device function', line, col);
+        throw new BarrierDivergenceError('__syncthreads() inside a device function', r.value.line, r.value.col);
       }
       w.active = savedActive;
       w.exited = savedExited;
@@ -923,6 +929,19 @@ class Compiler {
       return out;
     };
   }
+}
+
+/** Buffer id of a shared array: 0 = the extern array; static arrays follow
+ * the kernel's parameters, in declaration order. launch() builds the buffer
+ * list in exactly this order. */
+export function sharedBufferId(info: KernelInfo, name: string): number {
+  if (info.externName === name) return 0;
+  let i = 0;
+  for (const key of info.sharedLayout.keys()) {
+    if (key === name) return 1 + info.decl.params.length + i;
+    i++;
+  }
+  throw new Error(`unknown shared array ${name}`);
 }
 
 /** Copy `src` lanes into `dst` under `mask`, converting to the target kind. */

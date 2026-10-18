@@ -5,8 +5,8 @@
  */
 
 import { check } from './check';
-import { compile, type CompiledProgram } from './compile';
-import { CudaError, RuntimeError, type ThreadId } from './errors';
+import { compile, sharedBufferId, type CompiledProgram } from './compile';
+import { BarrierDivergenceError, CudaError, RuntimeError, type ThreadId } from './errors';
 import { Instrument } from './instrument';
 import { parse } from './parser';
 import {
@@ -54,11 +54,15 @@ export interface LaunchStats {
 
 export interface RaceReport {
   kind: 'shared' | 'global';
+  /** one example address */
   address: number;
   buffer: string;
   firstLine: number;
   secondLine: number;
+  /** one example pair of threads */
   threads: [ThreadId, ThreadId];
+  /** how many (address, pair) conflicts collapsed into this report */
+  count: number;
 }
 
 export interface LaunchResult {
@@ -86,12 +90,16 @@ export function launch(p: CompiledProgram, kernel: string, opts: LaunchOptions):
   const [gx, gy, gz] = opts.grid;
   if (gx * gy * gz <= 0) throw new RuntimeError('grid must have at least one block', decl.pos.line, decl.pos.col);
 
-  // buffers: 0 = shared (static + dynamic), then args in order
-  const sharedFloats = (k.info.staticSharedBytes + (opts.sharedBytes ?? 0)) / 4;
-  const sharedData = new Float32Array(Math.max(1, Math.ceil(sharedFloats)));
-  const buffers: DeviceBuffer[] = [makeBuffer(0, 'shared', 'float', sharedData)];
-  buffers[0].length = sharedFloats; // bounds against the real size, not the padded 1
-  if (k.info.usesExternShared && (opts.sharedBytes ?? 0) === 0) {
+  // buffers: 0 = the extern __shared__ array (dynamic), then args in order,
+  // then each static __shared__ array as its own bounded buffer. All shared
+  // arrays are views into one per-block ArrayBuffer that is zeroed per block.
+  const externFloats = Math.floor((opts.sharedBytes ?? 0) / 4);
+  const sharedBytesTotal = k.info.staticSharedBytes + externFloats * 4;
+  const sharedAB = new ArrayBuffer(Math.max(4, sharedBytesTotal));
+  const sharedData = new Float32Array(sharedAB);
+  const externView = new Float32Array(sharedAB, k.info.staticSharedBytes, externFloats);
+  const buffers: DeviceBuffer[] = [makeBuffer(0, k.info.externName ?? 'shared', k.info.externElem ?? 'float', externView, true)];
+  if (k.info.usesExternShared && externFloats === 0) {
     const d = k.info.decl;
     throw new RuntimeError(`${kernel} declares extern __shared__ memory: pass sharedBytes in the launch`, d.pos.line, d.pos.col);
   }
@@ -112,6 +120,12 @@ export function launch(p: CompiledProgram, kernel: string, opts: LaunchOptions):
     }
     params.push(buf);
   });
+  for (const [name, entry] of k.info.sharedLayout) {
+    const len = entry.dims.reduce((a, b) => a * b, 1);
+    const view = new Float32Array(sharedAB, entry.offset, len);
+    const id = sharedBufferId(k.info, name);
+    buffers[id] = makeBuffer(id, name, entry.elem, view, true);
+  }
 
   const instrument = new Instrument(opts.instrument ?? true, buffers);
   const ctx: LaunchCtx = {
@@ -162,6 +176,8 @@ export function launch(p: CompiledProgram, kernel: string, opts: LaunchOptions):
       broke: 0,
       cont: 0,
       locals: Array.from({ length: k.localSlots }, (_, s) => new Float64Array(k.slotLen[s] ?? LANES)),
+      params: params.slice(),
+      barriers: 0,
       frames: new Map(),
     });
   }
@@ -187,37 +203,84 @@ export function launch(p: CompiledProgram, kernel: string, opts: LaunchOptions):
 }
 
 /** Round-robin the block's warps; a warp parks at a barrier until every
- * warp that still has live lanes has arrived (exited threads don't count). */
-function runBlock(body: (w: WarpCtx) => Generator<'barrier', void, void>, warps: WarpCtx[], ctx: LaunchCtx): void {
+ * warp that still has live lanes has arrived (exited threads don't count).
+ * Two mistakes are errors rather than silent: warps parked at different
+ * barrier sites, and a warp that ran off the end of the kernel with live
+ * lanes while others wait at a barrier it never reached. */
+function runBlock(
+  body: (w: WarpCtx) => Generator<{ line: number; col: number }, void, void>,
+  warps: WarpCtx[],
+  ctx: LaunchCtx,
+): void {
   const gens = warps.map((w) => {
     w.active = w.valid;
     w.exited = 0;
     w.broke = 0;
     w.cont = 0;
+    w.barriers = 0;
+    w.params = ctx.params.slice();
     return body(w);
   });
-  const finished: boolean[] = Array.from({ length: warps.length }, () => false);
-  const waiting: boolean[] = Array.from({ length: warps.length }, () => false);
+  const n = warps.length;
+  const finished: boolean[] = Array.from({ length: n }, () => false);
+  const fellThrough: boolean[] = Array.from({ length: n }, () => false);
+  const site: ({ line: number; col: number } | null)[] = Array.from({ length: n }, () => null);
+  let released = 0;
   for (;;) {
     let progressed = false;
-    for (let i = 0; i < warps.length; i++) {
-      if (finished[i] || waiting[i]) continue;
+    for (let i = 0; i < n; i++) {
+      if (finished[i] || site[i]) continue;
       const r = gens[i].next();
       progressed = true;
-      if (r.done) finished[i] = true;
-      else waiting[i] = true;
+      if (r.done) {
+        finished[i] = true;
+        fellThrough[i] = warps[i].active !== 0;
+      } else site[i] = r.value;
     }
     const live = warps.map((_, i) => !finished[i]);
     if (!live.some(Boolean)) return;
-    const allWaiting = live.every((l, i) => !l || waiting[i]);
+    const allWaiting = live.every((l, i) => !l || site[i] !== null);
     if (allWaiting) {
+      const parked = site.map((s, i) => (s ? i : -1)).filter((i) => i >= 0);
+      const first = site[parked[0]]!;
+      for (const i of parked) {
+        const s = site[i]!;
+        if (s.line !== first.line || s.col !== first.col) {
+          throw new BarrierDivergenceError(
+            `warps of one block are waiting at different __syncthreads() calls (line ${first.line} and line ${s.line}): every thread must reach the same barrier`,
+            s.line,
+            s.col,
+            threadOf(warps[i]),
+          );
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        if (finished[i] && fellThrough[i] && warps[i].barriers <= released) {
+          throw new BarrierDivergenceError(
+            `some threads reached the end of the kernel without the __syncthreads() on line ${first.line} that other threads are waiting at`,
+            first.line,
+            first.col,
+            threadOf(warps[i]),
+          );
+        }
+      }
+      released++;
       ctx.barriers++;
       ctx.hooks.onBarrier();
-      for (let i = 0; i < warps.length; i++) waiting[i] = false;
+      for (const i of parked) {
+        site[i] = null;
+        warps[i].barriers++;
+      }
       continue;
     }
     if (!progressed) throw new RuntimeError('scheduler stalled', 1, 1);
   }
+}
+
+function threadOf(w: WarpCtx): ThreadId {
+  let lane = 0;
+  while (lane < LANES - 1 && !((w.valid >>> lane) & 1)) lane++;
+  return { block: [...w.ctx.blockIdx] as [number, number, number], thread: [w.tx[lane], w.ty[lane], w.tz[lane]] };
 }
 
 export { FULL };

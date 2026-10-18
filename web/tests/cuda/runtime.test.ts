@@ -212,6 +212,75 @@ describe('runtime core', () => {
     );
   });
 
+  it('a kernel parameter written in one warp does not leak to other warps or blocks', () => {
+    const y = f32('y', 128);
+    run(`__global__ void k(float* y, int n) { if (blockIdx.x == 0 && threadIdx.x == 0) n = 100; y[blockIdx.x * 64 + threadIdx.x] = (float)n; }`, 'k', {
+      grid: [2, 1, 1],
+      block: [64, 1, 1],
+      args: [y, int(7)],
+    });
+    const d = data(y);
+    expect(d[0]).toBe(100);
+    expect(d[1]).toBe(7); // a parameter is a per-thread register: lane 1 never wrote it
+    expect(d[32]).toBe(7); // warp 1 of block 0
+    expect(d[64]).toBe(7); // block 1
+  });
+
+  it('integer division or remainder by zero is a RuntimeError with the line', () => {
+    expect(() => run(`__global__ void k(int* z, int d) {\n z[0] = 7 / d;\n }`, 'k', { args: [i32('z', 1), int(0)] })).toThrowError(
+      expect.objectContaining({ kind: 'runtime', line: 2, message: expect.stringMatching(/division by zero/) }),
+    );
+    expect(() => run(`__global__ void k(int* z, int d) {\n z[0] = 7 % d;\n }`, 'k', { args: [i32('z', 1), int(0)] })).toThrowError(
+      expect.objectContaining({ kind: 'runtime', line: 2 }),
+    );
+  });
+
+  it('a barrier skipped by a whole warp is a BarrierDivergenceError', () => {
+    expect(() =>
+      run(`__global__ void k(float* y) {\n if (threadIdx.x < 32) __syncthreads();\n y[threadIdx.x] = 1.f; }`, 'k', {
+        block: [64, 1, 1],
+        args: [f32('y', 64)],
+      }),
+    ).toThrowError(expect.objectContaining({ kind: 'barrier' }));
+  });
+
+  it('warps parked at different barrier sites is a BarrierDivergenceError', () => {
+    expect(() =>
+      run(
+        `__global__ void k(float* y) {\n if (threadIdx.x < 32) { __syncthreads(); } else { y[threadIdx.x] = 0.f; __syncthreads(); }\n y[threadIdx.x] = 1.f; }`,
+        'k',
+        { block: [64, 1, 1], args: [f32('y', 64)] },
+      ),
+    ).toThrowError(expect.objectContaining({ kind: 'barrier' }));
+  });
+
+  it('a barrier inside a loop every warp runs the same number of times is fine', () => {
+    const y = f32('y', 64);
+    run(`__global__ void k(float* y) { __shared__ float s[64]; float acc = 0.f; for (int r = 0; r < 3; r++) { s[threadIdx.x] = (float)(r + threadIdx.x); __syncthreads(); acc += s[63 - threadIdx.x]; __syncthreads(); } y[threadIdx.x] = acc; }`, 'k', {
+      block: [64, 1, 1],
+      args: [y],
+    });
+    expect(data(y)[0]).toBe(63 + 64 + 65);
+  });
+
+  it('shared arrays are bounded individually and named in the error', () => {
+    expect(() =>
+      run(`__global__ void k(float* y) {\n __shared__ float A[16]; __shared__ float B[16];\n A[threadIdx.x] = 1.f;\n y[threadIdx.x] = B[0]; }`, 'k', { args: [f32('y', 32)] }),
+    ).toThrowError(expect.objectContaining({ kind: 'oob', line: 3, message: expect.stringMatching(/A\[16\]/) }));
+  });
+
+  it('negative pointer arithmetic reports an out-of-bounds index on the right buffer', () => {
+    expect(() =>
+      run(`__global__ void k(const float* x, float* y) {\n int i = threadIdx.x;\n const float* p = x + (i - 1);\n y[i] = p[0]; }`, 'k', { args: [f32('x', 32), f32('y', 32)] }),
+    ).toThrowError(expect.objectContaining({ kind: 'oob', message: expect.stringMatching(/x\[-1\]/) }));
+  });
+
+  it('p++ on a pointer advances by one element', () => {
+    const y = i32('y', 4);
+    run(`__global__ void k(int* y) { if (threadIdx.x == 0) { int* p = y; p++; p[0] = 5; p--; p[0] = 3; } }`, 'k', { args: [y] });
+    expect(Array.from(data(y))).toEqual([3, 5, 0, 0]);
+  });
+
   it('printf captures per-lane lines with %d and %f', () => {
     const r = run(`__global__ void k(float* y) { printf("tid %d x %f\\n", threadIdx.x, y[threadIdx.x]); }`, 'k', {
       block: [2, 1, 1],

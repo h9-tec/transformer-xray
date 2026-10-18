@@ -8,18 +8,24 @@ import { OutOfBoundsError } from './errors';
 export const LANES = 32;
 export const FULL = 0xffffffff | 0; // all 32 lanes, as a signed int32
 
-/** Pointer = bufId * 2^32 + elementIndex, stored in a double. bufId 0 is the
- * block's shared memory; bufId k ≥ 1 is argument buffer k-1. */
-const PTR_SCALE = 4294967296;
-export const makePtr = (bufId: number, idx: number): number => bufId * PTR_SCALE + idx;
+/** Pointer = bufId * 2^40 + 2^39 + elementIndex, stored in a double. The
+ * 2^39 bias keeps a transiently negative index (x + (i - 1) at i = 0)
+ * inside its own buffer so the bounds check names the right array. bufId 0
+ * is the kernel's extern __shared__ array; then the arguments in order;
+ * then each static __shared__ array as its own buffer. */
+const PTR_SCALE = 2 ** 40;
+const PTR_BIAS = 2 ** 39;
+export const makePtr = (bufId: number, idx: number): number => bufId * PTR_SCALE + PTR_BIAS + idx;
 export const ptrBuf = (p: number): number => Math.floor(p / PTR_SCALE);
-export const ptrIdx = (p: number): number => p - Math.floor(p / PTR_SCALE) * PTR_SCALE;
+export const ptrIdx = (p: number): number => p - Math.floor(p / PTR_SCALE) * PTR_SCALE - PTR_BIAS;
 
 export type Elem = 'float' | 'int';
 
 export interface DeviceBuffer {
   id: number;
   name: string;
+  /** lives in the block's shared memory (per-block, reset between blocks) */
+  shared: boolean;
   elem: Elem;
   f32: Float32Array;
   i32: Int32Array;
@@ -44,7 +50,7 @@ export function popcount(m: number): number {
 export interface Hooks {
   onWarpInstruction(active: number, valid: number): void;
   onGlobal(kind: 'load' | 'store' | 'atomic', buf: DeviceBuffer, byteAddrs: number[], line: number, threads: ThreadId[]): void;
-  onShared(kind: 'load' | 'store' | 'atomic', byteAddrs: number[], line: number, threads: ThreadId[]): void;
+  onShared(kind: 'load' | 'store' | 'atomic', buf: DeviceBuffer, byteAddrs: number[], line: number, threads: ThreadId[]): void;
   onBarrier(): void;
   onBlockStart(block: [number, number, number]): void;
 }
@@ -63,7 +69,7 @@ export interface LaunchCtx {
   grid: [number, number, number];
   block: [number, number, number];
   blockThreads: number;
-  /** scalar/pointer params as 32-wide constant buffers */
+  /** scalar/pointer params as 32-wide constant buffers (launch-wide originals) */
   params: Float64Array[];
   hooks: Hooks;
   budget: number;
@@ -96,6 +102,11 @@ export interface WarpCtx {
   cont: number;
   /** kernel locals: one 32-wide buffer per slot (float4 slots have length 128) */
   locals: Float64Array[];
+  /** this warp's view of the kernel params: a param is a per-thread register,
+   * so a write makes a private copy here and never reaches other warps */
+  params: Float64Array[];
+  /** barriers this warp has passed in the current block */
+  barriers: number;
   /** device-function frames by function name */
   frames: Map<string, Float64Array[]>;
 }
@@ -115,11 +126,12 @@ export function checkBounds(w: WarpCtx, buf: DeviceBuffer, idx: number, lane: nu
   }
 }
 
-export function makeBuffer(id: number, name: string, elem: Elem, data: Float32Array | Int32Array): DeviceBuffer {
+export function makeBuffer(id: number, name: string, elem: Elem, data: Float32Array | Int32Array, shared = false): DeviceBuffer {
   const ab = data.buffer as ArrayBuffer;
   return {
     id,
     name,
+    shared,
     elem,
     f32: data instanceof Float32Array ? data : new Float32Array(ab, data.byteOffset, data.length),
     i32: data instanceof Int32Array ? data : new Int32Array(ab, data.byteOffset, data.length),
