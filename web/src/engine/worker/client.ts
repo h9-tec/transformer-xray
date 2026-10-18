@@ -9,6 +9,7 @@ import type {
   WorkerRequest,
   WorkerResponse,
 } from './protocol';
+import { withBase } from '@/lib/basePath';
 import { WORKER_URL } from './worker-url';
 
 export interface TokenEvent {
@@ -80,7 +81,7 @@ export class EngineClient {
     // deliberately outside the app bundler: bundler-worker interop broke
     // silently under static export, and a plain script URL cannot. The
     // filename is content-hashed so caches can never serve a stale engine.
-    this.worker = new Worker(WORKER_URL);
+    this.worker = new Worker(withBase(WORKER_URL));
     this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => this.dispatch(e.data);
     // A worker that fails to boot emits 'error', not a message — without this,
     // every pending promise would hang forever.

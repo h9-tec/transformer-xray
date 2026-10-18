@@ -1,6 +1,7 @@
 /** Fetch + parse the exported model artifacts (browser side). */
 
 import type { Weights } from '@/engine/gpt';
+import { withBase } from '@/lib/basePath';
 import { CharTokenizer } from '@/engine/tokenizer';
 import {
   configFromJson,
@@ -29,7 +30,7 @@ async function fetchOk(url: string): Promise<Response> {
   }
 }
 
-export async function loadModel(base = '/model'): Promise<LoadedModel> {
+export async function loadModel(base = withBase('/model')): Promise<LoadedModel> {
   const [cfgJson, tokJson, weightsBuf] = await Promise.all([
     fetchOk(`${base}/config.json`).then((r) => r.json() as Promise<ModelConfigJson>),
     fetchOk(`${base}/tokenizer.json`).then((r) => r.json() as Promise<{ chars: string }>),

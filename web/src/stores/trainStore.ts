@@ -3,6 +3,7 @@
 /** Watch-it-learn state. Loss history is plain numbers, so it can live in
  * the store; the trained params live in the worker. */
 
+import { withBase } from '@/lib/basePath';
 import { create } from 'zustand';
 import { engine } from './modelStore';
 import { DEFAULT_TEXT, useTraceStore } from './traceStore';
@@ -28,8 +29,9 @@ interface TrainState {
 }
 
 async function fetchCorpus(): Promise<string> {
-  const r = await fetch('/model/corpus.txt');
-  if (!r.ok) throw new Error(`fetch failed for /model/corpus.txt: HTTP ${r.status}`);
+  const url = withBase('/model/corpus.txt');
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`fetch failed for ${url}: HTTP ${r.status}`);
   return r.text();
 }
 
