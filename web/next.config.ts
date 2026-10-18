@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
   output: 'export',
   trailingSlash: true,
   basePath: basePath || undefined,
-  assetPrefix: basePath || undefined,
   pageExtensions: ['ts', 'tsx', 'mdx'],
 };
 

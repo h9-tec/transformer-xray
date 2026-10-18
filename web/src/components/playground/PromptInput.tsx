@@ -33,7 +33,7 @@ export function PromptInput({ chars }: { chars: string }) {
         spellCheck={false}
         aria-label="Prompt"
         aria-invalid={invalid !== null}
-        className="nums w-full resize-y rounded-lg border border-line bg-surface p-3 text-ink outline-none focus:border-accent"
+        className="nums panel w-full resize-y !rounded-xl p-3 text-ink outline-none focus:border-accent"
       />
       {invalid && (
         <p className="text-xs text-danger" role="alert">
@@ -50,7 +50,7 @@ export function PromptInput({ chars }: { chars: string }) {
         type="button"
         onClick={() => void generate()}
         disabled={blocked}
-        className="w-full rounded-full bg-accent py-2 font-medium text-bg transition-opacity hover:opacity-90 disabled:opacity-30"
+        className="btn-primary w-full justify-center !py-2 disabled:opacity-30"
       >
         {generating ? 'generating…' : 'generate'}
       </button>

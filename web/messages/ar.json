@@ -88,7 +88,8 @@
     "waiting": "في انتظار النموذج…",
     "phaseLabel": "اتجاه تدفق البيانات",
     "phaseForward": "أمامي",
-    "phaseBackward": "خلفي"
+    "phaseBackward": "خلفي",
+    "underTheHood": "تحت الغطاء: نواة CUDA لهذه العملية"
   },
   "train": {
     "title": "شاهده يتعلّم",

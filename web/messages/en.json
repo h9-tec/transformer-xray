@@ -88,7 +88,8 @@
     "waiting": "waiting for the model…",
     "phaseLabel": "Data flow direction",
     "phaseForward": "Forward",
-    "phaseBackward": "Backward"
+    "phaseBackward": "Backward",
+    "underTheHood": "Under the hood: the CUDA kernel for this op"
   },
   "train": {
     "title": "Watch it learn",

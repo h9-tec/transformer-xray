@@ -36,7 +36,7 @@ export function NavRail() {
   return (
     <nav aria-label={t('label')} className="space-y-1">
       <Group stages={FORWARD_STAGES} accent="fwd" />
-      <p className="pt-3 text-xs uppercase tracking-wide text-faint">{t('trainingGroup')}</p>
+      <p className="pt-3 text-xs text-faint">{t('trainingGroup')}</p>
       <Group stages={TRAIN_STAGES} accent="bwd" />
     </nav>
   );

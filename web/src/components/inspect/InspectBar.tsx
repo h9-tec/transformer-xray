@@ -24,7 +24,7 @@ export function InspectBar() {
   }, [model.status, status, trace]);
 
   return (
-    <div className="space-y-2 rounded-lg border border-line bg-surface p-3">
+    <div className="panel space-y-2 p-3">
       <div className="flex flex-wrap items-center gap-3">
         <input
           value={text.replace(/\n/g, '⏎')}
@@ -37,7 +37,7 @@ export function InspectBar() {
           type="button"
           onClick={() => void trace()}
           disabled={status === 'tracing' || model.status !== 'ready'}
-          className="rounded-full bg-fwd px-4 py-1.5 text-sm font-medium text-bg hover:opacity-90 disabled:opacity-30"
+          className="btn-primary !px-4 !py-1.5 text-sm disabled:opacity-30"
         >
           {status === 'tracing' ? t('tracing') : t('traceButton')}
         </button>
@@ -49,7 +49,7 @@ export function InspectBar() {
           <span className="text-danger">{error}</span>
         ) : status === 'ready' && loss !== null ? (
           <>
-            T = {T} · loss = <span className="text-ink">{loss.toFixed(4)}</span> ·{' '}
+            T = {T}, loss = <span className="text-ink">{loss.toFixed(4)}</span>.{' '}
             {t('liveNote')}
           </>
         ) : (

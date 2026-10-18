@@ -12,9 +12,7 @@ export function PipelineMap() {
       {STAGES.map((s, i) => (
         <span key={s.slug} className="flex items-center">
           {i > 0 && (
-            <span aria-hidden className="mx-1.5 text-faint">
-              →
-            </span>
+            <span aria-hidden className="mx-1.5 inline-block h-px w-3 bg-line align-middle" />
           )}
           <Link
             href={`/inspect/${s.slug}`}

@@ -23,7 +23,7 @@ export function TrainView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-surface p-4">
+      <div className="panel flex flex-wrap items-center gap-4 p-4">
         <div role="radiogroup" aria-label={t('source')} className="flex gap-1">
           {(['scratch', 'checkpoint'] as const).map((src) => (
             <button
@@ -125,7 +125,7 @@ export function TrainView() {
       {s.sample && (
         <div>
           <h3 className="mb-1 text-sm text-muted">{t('sampleTitle', { step: s.step })}</h3>
-          <pre className="nums whitespace-pre-wrap rounded-lg border border-line bg-surface p-4 text-sm text-bwd">
+          <pre className="nums panel whitespace-pre-wrap p-4 text-sm text-bwd">
             {s.sample}
           </pre>
         </div>

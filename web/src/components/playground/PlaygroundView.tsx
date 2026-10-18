@@ -34,7 +34,7 @@ export function PlaygroundView() {
 
   if (status !== 'ready' || !cfgJson) {
     return (
-      <div className="rounded-lg border border-line bg-surface p-6 text-sm text-muted" aria-busy>
+      <div className="panel p-6 text-sm text-muted" aria-busy>
         {t('loading')}
       </div>
     );

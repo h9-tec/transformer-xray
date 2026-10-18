@@ -15,7 +15,7 @@ export function TokenStream({ chars }: { chars: string }) {
 
   return (
     <div
-      className="nums min-h-40 whitespace-pre-wrap rounded-lg border border-line bg-surface p-4 text-[15px] leading-7"
+      className="nums panel min-h-40 whitespace-pre-wrap p-4 text-[15px] leading-7"
       aria-live="polite"
       aria-label="Generated text; click a character to inspect its step"
     >

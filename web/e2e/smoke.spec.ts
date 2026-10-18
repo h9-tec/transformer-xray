@@ -91,3 +91,18 @@ test('new identity: display type and copper accent are live', async ({ page }) =
   );
   expect(accent).toBe('#ff9a4d');
 });
+
+test('GPU panel is collapsed under the hood by default', async ({ page }) => {
+  await page.goto('en/inspect/mlp/');
+  const details = page.locator('details', { hasText: 'Under the hood' });
+  await expect(details).toHaveCount(1);
+  await expect(details).not.toHaveAttribute('open', '');
+  await details.locator('summary').click();
+  await expect(page.getByText('kernels/03_matmul.cu')).toBeVisible();
+});
+
+test('/ar renders no raw message keys', async ({ page }) => {
+  await page.goto('ar/');
+  const text = await page.locator('body').innerText();
+  expect(text).not.toMatch(/\b(home|nav|learn|inspect)\.[a-zA-Z]+/);
+});
