@@ -23,12 +23,14 @@ Nothing is canned. That claim is enforced by tests.
 | the AdamW step is PyTorch's step | post-step params vs `torch.optim.AdamW` (`< 5e-6` on identical grads) |
 | generation matches | greedy decode reproduces PyTorch token-for-token |
 | the CUDA kernels are real | `kernels/` compiles; `make bench` verifies vs CPU at the model's shapes |
+| the in-browser GPU runs real CUDA | the same five `.cu` files run on the interpreter and match the engine (`< 1e-5`) |
 
 ## Layout
 
 ```
 model/     Python: train the checkpoint, export weights + golden traces (the parity source of truth)
-web/       Next.js static export: playground, watch-it-learn, 9 inspectors, GPU panels
+web/       Next.js static export: landing, /learn course, playground, watch-it-learn, 9 inspectors, GPU panels
+web/src/cuda/  the in-browser CUDA interpreter (lexer → parser → checker → lockstep warp runtime + instrumentation)
 kernels/   CUDA teaching kernels (naive + optimized) + bench harness
 ```
 
@@ -69,6 +71,11 @@ BASE_PATH=/transformer-xray npx pnpm exec playwright test
   score→scale→mask→softmax story), MLP, residual stream, logits, loss, AdamW —
   each with a junior/senior depth toggle and a **forward/backward phase switch**
   that mirrors every view into its gradient twin.
+- **An in-browser GPU** — a TypeScript interpreter for a CUDA subset
+  (`docs/cuda-subset.md`) that runs kernels warp by warp in lockstep with
+  barriers, shuffles, atomics and shared memory, and reports sectors per
+  request, bank conflicts, divergence and data races. All five `kernels/*.cu`
+  files run on it unchanged and match the TS engine (`web/tests/cuda/fixtures.test.ts`).
 - **GPU panels** — per-op CUDA source, thread-block tiling diagrams driven by the
   live shapes, naive-vs-tiled traffic arithmetic, and timings measured on real
   hardware (labeled), never simulated.
