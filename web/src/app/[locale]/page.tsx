@@ -22,16 +22,16 @@ export default function Home({ params }: { params: Promise<{ locale: string }> }
       <section className="relative overflow-hidden pt-8 pb-10 sm:pt-16">
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-x-[10%] -top-[20%] h-[70%]"
+          className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(600px 300px at 25% 30%, rgba(255,154,77,.18), transparent 70%), radial-gradient(700px 340px at 80% 20%, rgba(116,199,255,.16), transparent 70%)',
+              'radial-gradient(42% 38% at 22% 48%, rgba(255,154,77,.14), transparent 100%), radial-gradient(40% 36% at 80% 40%, rgba(116,199,255,.12), transparent 100%)',
           }}
         />
         <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-14">
           <div>
             <p className="m-0 mb-3.5 text-[15px] text-muted">{t('kicker')}</p>
-            <h1 className="m-0 mb-5 font-display text-[clamp(40px,6.2vw,78px)] font-extrabold leading-[.98] tracking-[-0.03em] text-balance">
+            <h1 className="m-0 mb-5 font-display text-[clamp(34px,4vw,58px)] font-extrabold leading-[1.02] tracking-[-0.03em] text-balance">
               {t('h1a')}
               <span className="text-accent" style={{ textShadow: '0 0 34px rgba(255,154,77,.45)' }}>
                 {t('h1b')}

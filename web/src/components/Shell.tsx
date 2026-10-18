@@ -10,7 +10,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
-        <div className="mx-auto flex h-[60px] max-w-6xl items-center gap-5 px-5">
+        <div className="mx-auto flex h-[60px] max-w-[1200px] items-center gap-5 px-5">
           <Link href="/" className="flex items-center gap-2.5 font-display text-[17px] font-bold tracking-tight">
             <span aria-hidden className="glow-accent inline-block h-2.5 w-2.5 rounded-full bg-accent" />
             Transformer X-Ray
@@ -35,7 +35,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-6xl px-5 py-8">{children}</div>
+      <div className="mx-auto max-w-[1200px] px-5 py-8">{children}</div>
     </>
   );
 }
